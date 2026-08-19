@@ -105,7 +105,7 @@ const COMMERCIAL_STEPS = [
 ];
 
 export function ApplyWizard({ unit, location }: { unit: Unit; location: string }) {
-  const { user } = useSession();
+  const { user, ready } = useSession();
   const { toast } = useToast();
   const storageKey = `rd.application.${unit.id}`;
   const isCommercial = unit.propertyClass === "commercial";
@@ -119,10 +119,14 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
   const [submitted, setSubmitted] = React.useState<{ reference: string } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const hydrated = React.useRef(false);
+  const didInit = React.useRef(false);
 
   // Resume from saved draft, else pre-fill from profile/session.
+  // Runs exactly once (guarded), after the session resolves — `user`/`toast` are
+  // fresh references each render, so without the guard this effect would loop.
   React.useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+    if (didInit.current || !ready) return;
+    didInit.current = true;
     let loaded: Partial<Draft> | null = null;
     try {
       const raw = localStorage.getItem(storageKey);
@@ -154,8 +158,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
       }));
     }
     hydrated.current = true;
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [storageKey, user, toast]);
+  }, [ready, user, storageKey, toast]);
 
   // Auto-save on change (after hydration).
   React.useEffect(() => {
