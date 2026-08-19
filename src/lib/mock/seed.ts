@@ -27,6 +27,9 @@ import type {
   AppSettings,
 } from "@/lib/types";
 
+// Unsplash placeholder imagery (stable CDN photo IDs). Swap for Cloudinary uploads later.
+const px = (...ids: string[]) => ids.map((id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1400&q=80`);
+
 export const owners: Owner[] = [
   {
     id: "own_1",
@@ -70,6 +73,7 @@ export const units: Unit[] = [
     code: "GRD-4821",
     title: "Bright 2-bedroom near Katipunan",
     type: "2br",
+    propertyClass: "residential",
     bedrooms: 2,
     bathrooms: 1,
     areaSqm: 54,
@@ -83,7 +87,7 @@ export const units: Unit[] = [
     availableFrom: "2026-09-01T00:00:00.000Z",
     description:
       "A calm two-bedroom with morning light, a short walk from Katipunan Ave. Pet-friendly building with 24/7 security and covered parking.",
-    photos: [],
+    photos: px("1560448204-e02f11c3d0e2", "1502672260266-1c1ef2d93688", "1493809842364-78817add7ffb"),
     createdAt: "2026-07-20T02:00:00.000Z",
   },
   {
@@ -92,6 +96,7 @@ export const units: Unit[] = [
     code: "GRD-4822",
     title: "Cozy studio, high floor",
     type: "studio",
+    propertyClass: "residential",
     bedrooms: 0,
     bathrooms: 1,
     areaSqm: 28,
@@ -105,7 +110,7 @@ export const units: Unit[] = [
     availableFrom: "2026-08-25T00:00:00.000Z",
     description:
       "Efficient high-floor studio with skyline views, building gym, and fast elevators. Ideal for a single professional.",
-    photos: [],
+    photos: px("1522771739844-6a9f6d5f14af", "1554995207-c18c203602cb"),
     createdAt: "2026-07-22T02:00:00.000Z",
   },
   {
@@ -114,6 +119,7 @@ export const units: Unit[] = [
     code: "SKY-1130",
     title: "1-bedroom loft in Legazpi Village",
     type: "1br",
+    propertyClass: "residential",
     bedrooms: 1,
     bathrooms: 1,
     areaSqm: 40,
@@ -127,7 +133,7 @@ export const units: Unit[] = [
     availableFrom: "2026-09-15T00:00:00.000Z",
     description:
       "Double-height loft steps from Legazpi Sunday Market. In-unit laundry, pool access, and secure parking.",
-    photos: [],
+    photos: px("1522708323590-d24dbb6b0267", "1493809842364-78817add7ffb", "1524758631624-e2822e304c36"),
     createdAt: "2026-07-25T02:00:00.000Z",
   },
   {
@@ -136,6 +142,7 @@ export const units: Unit[] = [
     code: "SKY-1131",
     title: "Spacious 3-bedroom family unit",
     type: "3br",
+    propertyClass: "residential",
     bedrooms: 3,
     bathrooms: 2,
     areaSqm: 88,
@@ -149,7 +156,7 @@ export const units: Unit[] = [
     availableFrom: "2026-10-01T00:00:00.000Z",
     description:
       "Family-sized three-bedroom with two baths, in-unit laundry, and full amenity access. Two covered parking slots.",
-    photos: [],
+    photos: px("1600585154340-be6161a56a0c", "1560185007-cde436f6a4d0", "1522708323590-d24dbb6b0267"),
     createdAt: "2026-07-28T02:00:00.000Z",
   },
   {
@@ -158,6 +165,7 @@ export const units: Unit[] = [
     code: "GRD-4830",
     title: "Garden-level 1-bedroom",
     type: "1br",
+    propertyClass: "residential",
     bedrooms: 1,
     bathrooms: 1,
     areaSqm: 36,
@@ -171,7 +179,7 @@ export const units: Unit[] = [
     availableFrom: "2026-09-05T00:00:00.000Z",
     description:
       "Ground-floor one-bedroom opening to a shared garden. Quiet, pet-friendly, with a private balcony.",
-    photos: [],
+    photos: px("1493809842364-78817add7ffb", "1449844908441-8829872d2607", "1560448204-e02f11c3d0e2"),
     createdAt: "2026-08-01T02:00:00.000Z",
   },
   {
@@ -180,6 +188,7 @@ export const units: Unit[] = [
     code: "SKY-1140",
     title: "Executive studio, fully furnished",
     type: "studio",
+    propertyClass: "residential",
     bedrooms: 0,
     bathrooms: 1,
     areaSqm: 32,
@@ -193,8 +202,54 @@ export const units: Unit[] = [
     availableFrom: "2026-08-30T00:00:00.000Z",
     description:
       "Move-in-ready furnished studio with full amenities. Perfect for relocating professionals.",
-    photos: [],
+    photos: px("1554995207-c18c203602cb", "1524758631624-e2822e304c36"),
     createdAt: "2026-08-03T02:00:00.000Z",
+  },
+  {
+    id: "unit_7",
+    propertyId: "prop_2",
+    code: "SKY-C01",
+    title: "Ground-floor retail space, Legazpi Village",
+    type: "retail",
+    propertyClass: "commercial",
+    permittedUse: "Retail / F&B",
+    bedrooms: 0,
+    bathrooms: 1,
+    areaSqm: 85,
+    rent: money(8000000),
+    deposit: money(24000000),
+    status: "vacant",
+    amenities: ["parking", "aircon", "security"],
+    petsAllowed: false,
+    incomeMultiple: 3,
+    availableFrom: "2026-09-20T00:00:00.000Z",
+    description:
+      "High-visibility corner retail unit with wide frontage on a busy foot-traffic street. Suited to café, F&B, or boutique retail. Grease trap and heavy-power provisions available.",
+    photos: px("1441986300917-64674bd600d8", "1604719312566-8912e9227c6a", "1567521464027-f127ff144326"),
+    createdAt: "2026-08-05T02:00:00.000Z",
+  },
+  {
+    id: "unit_8",
+    propertyId: "prop_1",
+    code: "GRD-C02",
+    title: "Office suite near Katipunan",
+    type: "office",
+    propertyClass: "commercial",
+    permittedUse: "Office / Professional services",
+    bedrooms: 0,
+    bathrooms: 1,
+    areaSqm: 60,
+    rent: money(5500000),
+    deposit: money(16500000),
+    status: "vacant",
+    amenities: ["parking", "aircon", "security", "elevator"],
+    petsAllowed: false,
+    incomeMultiple: 3,
+    availableFrom: "2026-09-10T00:00:00.000Z",
+    description:
+      "Fitted office suite with meeting room and pantry, close to Katipunan transit. Ideal for a small firm or back-office team.",
+    photos: px("1497366216548-37526070297c", "1497215728101-856f4ea42174", "1524758631624-e2822e304c36"),
+    createdAt: "2026-08-06T02:00:00.000Z",
   },
 ];
 
@@ -232,7 +287,7 @@ export const applications: Application[] = [
     unitId: "unit_1",
     primaryApplicantId: "appl_maria",
     status: "screening",
-    desiredMoveIn: "2026-09-01T00:00:00.000Z",
+    applicantType: "individual", desiredMoveIn: "2026-09-01T00:00:00.000Z",
     leaseTermMonths: 12,
     monthlyIncome: money(9500000),
     consentGivenAt: "2026-08-18T04:30:00.000Z",
@@ -299,14 +354,14 @@ applicants.push(
 applications.push(
   {
     id: "app_2039", reference: "APP-2039", unitId: "unit_3", primaryApplicantId: "appl_diego",
-    status: "approved", desiredMoveIn: "2026-09-15T00:00:00.000Z", leaseTermMonths: 12,
+    status: "approved", applicantType: "individual", desiredMoveIn: "2026-09-15T00:00:00.000Z", leaseTermMonths: 12,
     monthlyIncome: money(12000000), consentGivenAt: "2026-08-14T05:00:00.000Z", signatureName: "Diego Cruz",
     feeStatus: "paid", rubric: { incomeStability: 92, creditHistory: 88, rentalHistory: 80, completeness: 100, overall: 89 },
     submittedAt: "2026-08-14T06:00:00.000Z", createdAt: "2026-08-14T05:30:00.000Z", updatedAt: "2026-08-18T02:00:00.000Z",
   },
   {
     id: "app_2043", reference: "APP-2043", unitId: "unit_2", primaryApplicantId: "appl_priya",
-    status: "incomplete", desiredMoveIn: "2026-09-01T00:00:00.000Z", leaseTermMonths: 12,
+    status: "incomplete", applicantType: "individual", desiredMoveIn: "2026-09-01T00:00:00.000Z", leaseTermMonths: 12,
     monthlyIncome: money(6000000), consentGivenAt: "2026-08-16T05:00:00.000Z", signatureName: "Priya Kumar",
     feeStatus: "paid", submittedAt: "2026-08-16T06:00:00.000Z", createdAt: "2026-08-16T05:30:00.000Z", updatedAt: "2026-08-17T02:00:00.000Z",
   },

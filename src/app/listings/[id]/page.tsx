@@ -29,6 +29,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   const availLabel = { vacant: "Vacant", pending: "Pending", occupied: "Occupied" }[unit.status];
   const availCls = { vacant: "approved", pending: "review", occupied: "declined" }[unit.status];
   const canApply = unit.status !== "occupied";
+  const isCommercial = unit.propertyClass === "commercial";
 
   return (
     <>
@@ -44,26 +45,42 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           {/* main */}
           <div>
             <div className="detail-gallery">
-              <Icon name="building" size={64} />
+              {unit.photos.length > 0 ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={unit.photos[0]} alt={unit.title} className="detail-gallery-img" />
+              ) : (
+                <Icon name="building" size={64} />
+              )}
+              {isCommercial && <span className="pill accent detail-gallery-tag">Commercial</span>}
               <span className="code mono pill">{unit.code}</span>
             </div>
+            {unit.photos.length > 1 && (
+              <div className="detail-thumbs">
+                {unit.photos.slice(0, 4).map((p, i) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img key={i} src={p} alt={`${unit.title} — photo ${i + 1}`} className="detail-thumb" loading="lazy" />
+                ))}
+              </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
               <div>
                 <h1 className="detail-title">{unit.title}</h1>
                 <div className="detail-sub">
+                  {isCommercial && <span className="pill accent">Commercial</span>}
                   {property && (
                     <span><Icon name="mapPin" size={15} style={{ display: "inline", verticalAlign: "-2px" }} /> {property.addressLine}, {location}</span>
                   )}
                   <span>{UNIT_TYPE_LABELS[unit.type]}</span>
                   <span>{unit.areaSqm} m²</span>
+                  {isCommercial && unit.permittedUse && <span>{unit.permittedUse}</span>}
                 </div>
               </div>
               <Stamp variant={availCls}>{availLabel}</Stamp>
             </div>
 
             <div className="detail-section">
-              <h3 style={{ fontSize: 18, marginBottom: 10 }}>About this home</h3>
+              <h3 style={{ fontSize: 18, marginBottom: 10 }}>About this {isCommercial ? "space" : "home"}</h3>
               <p style={{ color: "var(--ink-soft)", margin: 0 }}>{unit.description}</p>
             </div>
 
@@ -88,15 +105,24 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               </div>
               <div style={{ margin: "16px 0" }}>
                 <div className="spec-row"><span>Deposit</span><b>{formatMoney(unit.deposit)}</b></div>
-                <div className="spec-row"><span>Bedrooms</span><b>{bedroomsLabel(unit.bedrooms)}</b></div>
-                <div className="spec-row"><span>Bathrooms</span><b>{unit.bathrooms}</b></div>
+                {isCommercial ? (
+                  <>
+                    <div className="spec-row"><span>Type</span><b>{UNIT_TYPE_LABELS[unit.type]}</b></div>
+                    {unit.permittedUse && <div className="spec-row"><span>Permitted use</span><b>{unit.permittedUse}</b></div>}
+                  </>
+                ) : (
+                  <>
+                    <div className="spec-row"><span>Bedrooms</span><b>{bedroomsLabel(unit.bedrooms)}</b></div>
+                    <div className="spec-row"><span>Bathrooms</span><b>{unit.bathrooms}</b></div>
+                  </>
+                )}
                 <div className="spec-row"><span>Floor area</span><b>{unit.areaSqm} m²</b></div>
                 <div className="spec-row"><span>Available from</span><b>{new Date(unit.availableFrom).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}</b></div>
-                <div className="spec-row"><span>Income guideline</span><b>{unit.incomeMultiple}× rent</b></div>
+                <div className="spec-row"><span>{isCommercial ? "Revenue guideline" : "Income guideline"}</span><b>{unit.incomeMultiple}× rent</b></div>
               </div>
               {canApply ? (
                 <LinkButton href={`/apply/${unit.id}`} variant="primary" size="lg" style={{ width: "100%", marginBottom: 10 }}>
-                  Apply for this home <Icon name="arrowRight" size={16} />
+                  Apply for this {isCommercial ? "space" : "home"} <Icon name="arrowRight" size={16} />
                 </LinkButton>
               ) : (
                 <button className="btn btn-primary btn-lg" style={{ width: "100%", marginBottom: 10 }} disabled>

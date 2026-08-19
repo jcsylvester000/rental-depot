@@ -32,6 +32,8 @@ export function ReviewWorkspace({ initial }: { initial: ApplicationDetail }) {
   const [busy, setBusy] = React.useState(false);
 
   const rubric = initial.rubric;
+  const isBusiness = initial.applicantType === "business";
+  const isCommercial = initial.unit.propertyClass === "commercial";
 
   async function runScreening() {
     setBusy(true);
@@ -92,15 +94,33 @@ export function ReviewWorkspace({ initial }: { initial: ApplicationDetail }) {
         <div className="applicant-head">
           <div className="av-lg">{outcomeInitials(initial.applicant.fullName)}</div>
           <div className="ah-info">
-            <h2>{initial.applicant.fullName}</h2>
+            <h2>{isBusiness && initial.businessName ? initial.businessName : initial.applicant.fullName}{isBusiness && <span className="pill accent" style={{ marginLeft: 8, fontSize: 11, verticalAlign: "middle" }}>Business</span>}</h2>
             <div className="ah-meta">
               <span className="mono">{initial.reference}</span>
-              <span><Icon name="building" size={14} style={{ display: "inline", verticalAlign: "-2px" }} /> {initial.unit.code}</span>
+              <span><Icon name="building" size={14} style={{ display: "inline", verticalAlign: "-2px" }} /> {initial.unit.code}{isCommercial ? " · Commercial" : ""}</span>
               <span><Icon name="clock" size={14} style={{ display: "inline", verticalAlign: "-2px" }} /> {formatDate(initial.submittedAt)}</span>
             </div>
           </div>
           <div className="ah-actions"><StatusStamp status={status} /></div>
         </div>
+
+        {/* business details (commercial) */}
+        {isBusiness && (
+          <div className="block" style={{ marginBottom: 20 }}>
+            <div className="block-head"><h3>Business details</h3><span className="muted" style={{ fontSize: 13 }}>Commercial tenant</span></div>
+            <div className="block-body">
+              <div className="rb-body" style={{ padding: 0 }}>
+                <div className="r"><span>Registered name</span>{initial.businessName ?? "—"}</div>
+                <div className="r"><span>Entity type</span>{initial.businessType ?? "—"}</div>
+                <div className="r"><span>Nature of business</span>{initial.natureOfBusiness ?? "—"}</div>
+                <div className="r"><span>Years operating</span>{initial.yearsOperating != null ? `${initial.yearsOperating} yr${initial.yearsOperating === 1 ? "" : "s"}` : "—"}</div>
+                <div className="r"><span>Intended use</span>{initial.intendedUse ?? "—"}</div>
+                {initial.unit.permittedUse && <div className="r"><span>Unit permitted use</span>{initial.unit.permittedUse}</div>}
+                <div className="r"><span>Primary contact</span>{initial.applicant.fullName}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* screening */}
         <div className="block" style={{ marginBottom: 20 }}>
@@ -181,12 +201,25 @@ export function ReviewWorkspace({ initial }: { initial: ApplicationDetail }) {
           <div className="block-head"><h3>Application details</h3></div>
           <div className="block-body">
             <div className="rb-body" style={{ padding: 0 }}>
-              <div className="r"><span>Employer</span>{initial.applicant.employer ?? "—"}</div>
-              <div className="r"><span>Position</span>{initial.applicant.position ?? "—"}</div>
-              <div className="r"><span>Gross income</span>{initial.applicant.grossMonthlyIncome ? `${formatMoney(initial.applicant.grossMonthlyIncome)} / mo` : "—"}</div>
-              <div className="r"><span>Current address</span>{initial.applicant.currentAddress ?? "—"}</div>
-              <div className="r"><span>Desired move-in</span>{formatDate(initial.desiredMoveIn)}</div>
-              <div className="r"><span>Fee</span>{initial.feeStatus === "paid" ? "Paid" : "Pending"}</div>
+              {isBusiness ? (
+                <>
+                  <div className="r"><span>Business</span>{initial.businessName ?? "—"}</div>
+                  <div className="r"><span>Monthly revenue</span>{initial.applicant.grossMonthlyIncome ? `${formatMoney(initial.applicant.grossMonthlyIncome)} / mo` : "—"}</div>
+                  <div className="r"><span>Contact</span>{initial.applicant.fullName}</div>
+                  <div className="r"><span>Lease term</span>{initial.leaseTermMonths ? `${initial.leaseTermMonths} months` : "—"}</div>
+                  <div className="r"><span>Desired move-in</span>{formatDate(initial.desiredMoveIn)}</div>
+                  <div className="r"><span>Fee</span>{initial.feeStatus === "paid" ? "Paid" : "Pending"}</div>
+                </>
+              ) : (
+                <>
+                  <div className="r"><span>Employer</span>{initial.applicant.employer ?? "—"}</div>
+                  <div className="r"><span>Position</span>{initial.applicant.position ?? "—"}</div>
+                  <div className="r"><span>Gross income</span>{initial.applicant.grossMonthlyIncome ? `${formatMoney(initial.applicant.grossMonthlyIncome)} / mo` : "—"}</div>
+                  <div className="r"><span>Current address</span>{initial.applicant.currentAddress ?? "—"}</div>
+                  <div className="r"><span>Desired move-in</span>{formatDate(initial.desiredMoveIn)}</div>
+                  <div className="r"><span>Fee</span>{initial.feeStatus === "paid" ? "Paid" : "Pending"}</div>
+                </>
+              )}
             </div>
           </div>
         </div>

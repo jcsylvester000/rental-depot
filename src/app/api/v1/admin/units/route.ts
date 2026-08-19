@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
       code: body.code,
       title: body.title,
       type: body.type ?? "1br",
+      propertyClass: body.propertyClass ?? "residential",
+      permittedUse: body.permittedUse,
       bedrooms: body.bedrooms ?? 1,
       bathrooms: body.bathrooms ?? 1,
       areaSqm: body.areaSqm ?? 30,

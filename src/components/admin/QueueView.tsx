@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { AdminQueueRow, UnitSummary, ApplicationStatus } from "@/lib/types";
+import type { AdminQueueRow, UnitSummary, ApplicationStatus, PropertyClass } from "@/lib/types";
 import { APPLICATION_STATUSES } from "@/lib/types";
 import { APPLICATION_STATUS_LABELS } from "@/lib/labels";
 import { formatDate } from "@/lib/format";
@@ -15,10 +15,11 @@ interface Filters {
   search: string;
   status: ApplicationStatus | "";
   unitId: string;
+  propertyClass: PropertyClass | "";
   incompleteOnly: boolean;
   sort: "newest" | "oldest" | "score" | "completeness";
 }
-const EMPTY: Filters = { search: "", status: "", unitId: "", incompleteOnly: false, sort: "newest" };
+const EMPTY: Filters = { search: "", status: "", unitId: "", propertyClass: "", incompleteOnly: false, sort: "newest" };
 
 interface SavedView {
   name: string;
@@ -47,6 +48,7 @@ export function QueueView({ rows, units }: { rows: AdminQueueRow[]; units: UnitS
     let list = rows.filter((r) => {
       if (filters.status && r.status !== filters.status) return false;
       if (filters.unitId && r.unitId !== filters.unitId) return false;
+      if (filters.propertyClass && r.propertyClass !== filters.propertyClass) return false;
       if (filters.incompleteOnly && !r.flags.includes("incomplete")) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -94,6 +96,11 @@ export function QueueView({ rows, units }: { rows: AdminQueueRow[]; units: UnitS
         <select className="select" style={{ width: "auto" }} value={filters.unitId} onChange={(e) => update("unitId", e.target.value)}>
           <option value="">All units</option>
           {units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}
+        </select>
+        <select className="select" style={{ width: "auto" }} value={filters.propertyClass} onChange={(e) => update("propertyClass", e.target.value as Filters["propertyClass"])}>
+          <option value="">All property types</option>
+          <option value="residential">Residential</option>
+          <option value="commercial">Commercial</option>
         </select>
         <select className="select" style={{ width: "auto" }} value={filters.sort} onChange={(e) => update("sort", e.target.value as Filters["sort"])}>
           <option value="newest">Newest</option>
@@ -144,8 +151,8 @@ export function QueueView({ rows, units }: { rows: AdminQueueRow[]; units: UnitS
               {filtered.map((r) => (
                 <tr key={r.id}>
                   <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSel(r.id)} aria-label={`Select ${r.applicantName}`} /></td>
-                  <td><div className="q-name">{r.applicantName}</div><div className="q-sub">{r.reference}</div></td>
-                  <td className="mono" style={{ fontSize: 13 }}>{r.unitCode}</td>
+                  <td><div className="q-name">{r.applicantName}{r.applicantType === "business" && <span className="pill accent" style={{ marginLeft: 6, fontSize: 10 }}>Business</span>}</div><div className="q-sub">{r.reference}</div></td>
+                  <td className="mono" style={{ fontSize: 13 }}>{r.unitCode}{r.propertyClass === "commercial" && <div className="q-sub" style={{ fontFamily: "var(--font-sans)" }}>Commercial</div>}</td>
                   <td><StatusStamp status={r.status} /></td>
                   <td><div className="meter"><i style={{ width: `${r.completenessPct}%` }} /></div><span className="q-sub">{r.completenessPct}%</span></td>
                   <td>{r.score != null ? <span className={`score-chip ${r.score >= 80 ? "good" : ""}`}>{r.score}</span> : <span className="muted">—</span>}</td>
@@ -167,8 +174,8 @@ export function QueueView({ rows, units }: { rows: AdminQueueRow[]; units: UnitS
                 <h4>{label}<span>{items.length}</span></h4>
                 {items.map((r) => (
                   <Link key={r.id} href={`/admin/applicant/${r.reference}`} className="board-card">
-                    <div className="bc-name">{r.applicantName}</div>
-                    <div className="bc-meta">{r.reference} · {r.unitCode}</div>
+                    <div className="bc-name">{r.applicantName}{r.applicantType === "business" && <span className="pill accent" style={{ marginLeft: 6, fontSize: 10 }}>Business</span>}</div>
+                    <div className="bc-meta">{r.reference} · {r.unitCode}{r.propertyClass === "commercial" ? " · Commercial" : ""}</div>
                     {r.score != null && <div style={{ marginTop: 6 }}><span className={`score-chip ${r.score >= 80 ? "good" : ""}`}>{r.score}</span></div>}
                   </Link>
                 ))}

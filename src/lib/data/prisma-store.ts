@@ -31,6 +31,7 @@ const money = (minor: number, currency: string): Money => ({ amountMinor: minor,
 function mapUnit(u: any): Unit {
   return {
     id: u.id, propertyId: u.propertyId, code: u.code, title: u.title, type: u.type,
+    propertyClass: u.propertyClass, permittedUse: u.permittedUse ?? undefined,
     bedrooms: u.bedrooms, bathrooms: u.bathrooms, areaSqm: u.areaSqm,
     rent: money(u.rentMinor, u.rentCurrency), deposit: money(u.depositMinor, u.depositCurrency),
     status: u.status, amenities: u.amenities, petsAllowed: u.petsAllowed,
@@ -40,7 +41,8 @@ function mapUnit(u: any): Unit {
 }
 function mapUnitSummary(u: any): UnitSummary {
   return {
-    id: u.id, code: u.code, title: u.title, city: u.property?.city ?? "", region: u.property?.region ?? "",
+    id: u.id, code: u.code, title: u.title, propertyClass: u.propertyClass, type: u.type, permittedUse: u.permittedUse ?? undefined,
+    city: u.property?.city ?? "", region: u.property?.region ?? "",
     bedrooms: u.bedrooms, bathrooms: u.bathrooms, areaSqm: u.areaSqm, rent: money(u.rentMinor, u.rentCurrency),
     status: u.status, petsAllowed: u.petsAllowed, amenities: u.amenities, coverPhoto: u.photos?.[0], availableFrom: iso(u.availableFrom)!,
   };
@@ -56,6 +58,8 @@ function mapApplicant(a: any): Applicant {
 function mapApplication(a: any): Application {
   return {
     id: a.id, reference: a.reference, unitId: a.unitId, primaryApplicantId: a.primaryApplicantId, status: a.status,
+    applicantType: a.applicantType, businessName: a.businessName ?? undefined, businessType: a.businessType ?? undefined,
+    natureOfBusiness: a.natureOfBusiness ?? undefined, yearsOperating: a.yearsOperating ?? undefined, intendedUse: a.intendedUse ?? undefined,
     desiredMoveIn: iso(a.desiredMoveIn), leaseTermMonths: a.leaseTermMonths ?? undefined,
     monthlyIncome: a.monthlyIncomeMinor != null ? money(a.monthlyIncomeMinor, a.monthlyIncomeCurrency ?? "PHP") : undefined,
     consentGivenAt: iso(a.consentGivenAt), signatureName: a.signatureName ?? undefined, feeStatus: a.feeStatus,
@@ -189,6 +193,8 @@ export const prismaStore: DataStore = {
 
     const app = await prisma.application.create({ data: {
       id: `app_${nextRef}`, reference: `APP-${nextRef}`, unitId: input.unitId, primaryApplicantId: applicantId, status: "new",
+      applicantType: input.applicantType ?? "individual", businessName: input.businessName, businessType: input.businessType,
+      natureOfBusiness: input.natureOfBusiness, yearsOperating: input.yearsOperating, intendedUse: input.intendedUse,
       desiredMoveIn: input.desiredMoveIn ? new Date(input.desiredMoveIn) : undefined, leaseTermMonths: input.leaseTermMonths ?? 12,
       monthlyIncomeMinor: input.monthlyIncomeMinor ?? undefined, monthlyIncomeCurrency: input.monthlyIncomeMinor ? "PHP" : undefined,
       consentGivenAt: input.consent ? now : undefined, signatureName: input.signatureName, feeStatus: input.feePaid ? "paid" : "pending",
@@ -257,7 +263,8 @@ export const prismaStore: DataStore = {
       const rubric = a.rubric as RubricScore | null;
       return {
         id: a.id, reference: a.reference, applicantName: a.primaryApplicant.fullName, applicantEmail: a.primaryApplicant.email,
-        unitId: a.unitId, unitCode: a.unit.code, unitTitle: a.unit.title, status: a.status, submittedAt: iso(a.submittedAt),
+        unitId: a.unitId, unitCode: a.unit.code, unitTitle: a.unit.title, propertyClass: a.unit.propertyClass, applicantType: a.applicantType,
+        status: a.status, submittedAt: iso(a.submittedAt),
         completenessPct: completenessOf(a.documents, a.feeStatus === "paid", !!a.consentGivenAt), score: rubric?.overall,
         incomeToRent: a.screening?.incomeToRent ?? undefined, creditScore: a.screening?.creditScore ?? undefined, flags,
       };
@@ -368,6 +375,7 @@ export const prismaStore: DataStore = {
   async createUnit(input: CreateUnitInput): Promise<Unit> {
     const u = await prisma.unit.create({ data: {
       id: `unit_new_${input.code.toLowerCase()}`, propertyId: input.propertyId, code: input.code, title: input.title, type: input.type,
+      propertyClass: input.propertyClass ?? "residential", permittedUse: input.permittedUse,
       bedrooms: input.bedrooms, bathrooms: input.bathrooms, areaSqm: input.areaSqm, rentMinor: input.rentMinor, depositMinor: input.depositMinor,
       status: "vacant", amenities: [], petsAllowed: input.petsAllowed, incomeMultiple: input.incomeMultiple, availableFrom: new Date(input.availableFrom), description: input.description, photos: [], createdAt: new Date(),
     } });

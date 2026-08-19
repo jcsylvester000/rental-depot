@@ -15,19 +15,29 @@ import type { UploadedAsset } from "@/lib/client/upload";
 
 const APPLICATION_FEE = money(100000); // ₱1,000
 
-const DOCS = [
+type DocDef = { key: string; label: string; required: boolean };
+
+const RESIDENTIAL_DOCS: DocDef[] = [
   { key: "gov_id", label: "Government ID", required: true },
   { key: "payslip", label: "Payslip (latest)", required: true },
   { key: "payslip2", label: "Payslip (prior month)", required: false },
   { key: "income", label: "Proof of income / bank statement", required: true },
-] as const;
+];
 
-type DocKey = (typeof DOCS)[number]["key"];
+const COMMERCIAL_DOCS: DocDef[] = [
+  { key: "business_reg", label: "Business registration (SEC/DTI)", required: true },
+  { key: "financials", label: "Financial statements", required: true },
+  { key: "bank", label: "Business bank statement", required: true },
+  { key: "principal_id", label: "Principal's government ID", required: true },
+];
 
 interface DocState { uploaded: boolean; assetRef?: string; fileName?: string }
 
 // Map wizard doc keys → data-contract DocumentType values.
-const DOC_TYPE: Record<DocKey, string> = { gov_id: "gov_id", payslip: "payslip", payslip2: "payslip", income: "income_proof" };
+const DOC_TYPE: Record<string, string> = {
+  gov_id: "gov_id", payslip: "payslip", payslip2: "payslip", income: "income_proof",
+  business_reg: "other", financials: "income_proof", bank: "bank_statement", principal_id: "gov_id",
+};
 
 interface Party {
   id: string;
@@ -52,7 +62,14 @@ interface Draft {
   employmentLength: string;
   grossIncome: string;
   additionalIncome: string;
-  documents: Record<DocKey, DocState>;
+  // Commercial
+  businessName: string;
+  businessType: string;
+  natureOfBusiness: string;
+  yearsOperating: string;
+  intendedUse: string;
+  employees: string;
+  documents: Record<string, DocState>;
   occupants: string;
   pets: string;
   parties: Party[];
@@ -65,12 +82,13 @@ const EMPTY_DRAFT: Draft = {
   firstName: "", lastName: "", email: "", phone: "", dob: "",
   currentAddress: "", city: "", yearsAtAddress: "1–2 years", housingCost: "", reasonMoving: "", landlordContact: "",
   employer: "", position: "", employmentLength: "1–3 years", grossIncome: "", additionalIncome: "",
-  documents: { gov_id: { uploaded: false }, payslip: { uploaded: false }, payslip2: { uploaded: false }, income: { uploaded: false } },
+  businessName: "", businessType: "Corporation", natureOfBusiness: "", yearsOperating: "", intendedUse: "", employees: "",
+  documents: {},
   occupants: "1", pets: "", parties: [],
   consent: false, signature: "", feePaid: false,
 };
 
-const STEPS = [
+const RESIDENTIAL_STEPS = [
   { n: 1, label: "Personal details", sub: "Who you are" },
   { n: 2, label: "Residence history", sub: "Where you've lived" },
   { n: 3, label: "Employment & income", sub: "Ability to pay" },
@@ -78,10 +96,22 @@ const STEPS = [
   { n: 5, label: "Review & sign", sub: "Consent & submit" },
 ];
 
+const COMMERCIAL_STEPS = [
+  { n: 1, label: "Business details", sub: "Your company" },
+  { n: 2, label: "Premises & use", sub: "How you'll use it" },
+  { n: 3, label: "Financials", sub: "Ability to pay" },
+  { n: 4, label: "Documents", sub: "Registration & guarantor" },
+  { n: 5, label: "Review & sign", sub: "Consent & submit" },
+];
+
 export function ApplyWizard({ unit, location }: { unit: Unit; location: string }) {
   const { user } = useSession();
   const { toast } = useToast();
   const storageKey = `rd.application.${unit.id}`;
+  const isCommercial = unit.propertyClass === "commercial";
+  const DOCS = isCommercial ? COMMERCIAL_DOCS : RESIDENTIAL_DOCS;
+  const STEPS = isCommercial ? COMMERCIAL_STEPS : RESIDENTIAL_STEPS;
+  const docUploaded = (key: string) => draft.documents[key]?.uploaded ?? false;
 
   const [step, setStep] = React.useState(1);
   const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
@@ -145,19 +175,31 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
   function validateStep(s: number): boolean {
     const e: Record<string, string> = {};
     if (s === 1) {
+      if (isCommercial) {
+        if (!nonEmpty(draft.businessName)) e.businessName = "Business name is required";
+        if (!nonEmpty(draft.natureOfBusiness)) e.natureOfBusiness = "Required";
+      }
       if (!nonEmpty(draft.firstName)) e.firstName = "This field is required";
       if (!nonEmpty(draft.lastName)) e.lastName = "This field is required";
       if (!isEmail(draft.email)) e.email = "Enter a valid email address";
       if (!nonEmpty(draft.phone)) e.phone = "This field is required";
-      if (!nonEmpty(draft.dob)) e.dob = "This field is required";
+      if (!isCommercial && !nonEmpty(draft.dob)) e.dob = "This field is required";
     } else if (s === 2) {
-      if (!nonEmpty(draft.currentAddress)) e.currentAddress = "This field is required";
-      if (!nonEmpty(draft.city)) e.city = "Required";
+      if (isCommercial) {
+        if (!nonEmpty(draft.intendedUse)) e.intendedUse = "Please describe the intended use";
+      } else {
+        if (!nonEmpty(draft.currentAddress)) e.currentAddress = "This field is required";
+        if (!nonEmpty(draft.city)) e.city = "Required";
+      }
     } else if (s === 3) {
-      if (!nonEmpty(draft.employer)) e.employer = "Required";
-      if (!nonEmpty(draft.grossIncome)) e.grossIncome = "Required";
+      if (isCommercial) {
+        if (!nonEmpty(draft.grossIncome)) e.grossIncome = "Required";
+      } else {
+        if (!nonEmpty(draft.employer)) e.employer = "Required";
+        if (!nonEmpty(draft.grossIncome)) e.grossIncome = "Required";
+      }
     } else if (s === 4) {
-      const missing = DOCS.filter((d) => d.required && !draft.documents[d.key].uploaded);
+      const missing = DOCS.filter((d) => d.required && !docUploaded(d.key));
       if (missing.length) e.documents = `Please upload: ${missing.map((m) => m.label).join(", ")}`;
     }
     setErrors(e);
@@ -170,10 +212,10 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function onDocUploaded(key: DocKey, asset: UploadedAsset) {
+  function onDocUploaded(key: string, asset: UploadedAsset) {
     set("documents", { ...draft.documents, [key]: { uploaded: true, assetRef: asset.url, fileName: asset.fileName } });
   }
-  const nextPendingKey = (): DocKey | undefined => DOCS.find((d) => !draft.documents[d.key].uploaded)?.key;
+  const nextPendingKey = (): string | undefined => DOCS.find((d) => !docUploaded(d.key))?.key;
 
   function inviteParty(email: string, role: Party["role"]) {
     if (!isEmail(email)) return toast("Enter a valid email to invite");
@@ -197,14 +239,20 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
             phone: draft.phone,
             dateOfBirth: draft.dob ? new Date(draft.dob).toISOString() : undefined,
           },
+          applicantType: isCommercial ? "business" : "individual",
+          businessName: isCommercial ? draft.businessName : undefined,
+          businessType: isCommercial ? draft.businessType : undefined,
+          natureOfBusiness: isCommercial ? draft.natureOfBusiness : undefined,
+          yearsOperating: isCommercial && draft.yearsOperating ? Number(draft.yearsOperating) : undefined,
+          intendedUse: isCommercial ? draft.intendedUse : undefined,
           currentAddress: draft.currentAddress,
-          employer: draft.employer,
+          employer: isCommercial ? draft.businessName : draft.employer,
           position: draft.position,
           monthlyIncomeMinor: toNumber(draft.grossIncome) * 100,
-          leaseTermMonths: 12,
+          leaseTermMonths: isCommercial ? 36 : 12,
           occupants: Number(draft.occupants),
           pets: draft.pets,
-          documentsUploaded: DOCS.filter((d) => draft.documents[d.key].uploaded).map((d) => ({ type: DOC_TYPE[d.key], label: d.label, assetRef: draft.documents[d.key].assetRef, fileName: draft.documents[d.key].fileName })),
+          documentsUploaded: DOCS.filter((d) => docUploaded(d.key)).map((d) => ({ type: DOC_TYPE[d.key], label: d.label, assetRef: draft.documents[d.key].assetRef, fileName: draft.documents[d.key].fileName })),
           consent: draft.consent,
           signatureName: draft.signature,
           feePaid: draft.feePaid,
@@ -257,7 +305,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
           <div className="eyebrow" style={{ marginBottom: 6 }}>Applying for</div>
           <div className="rent">{formatMoney(unit.rent)} <span className="muted" style={{ fontSize: 12 }}>/mo</span></div>
           <div className="addr">{location}</div>
-          <div className="mono muted" style={{ fontSize: 11, marginTop: 8 }}>{unit.code} · {unit.bedrooms === 0 ? "Studio" : `${unit.bedrooms} bed`} · {unit.areaSqm} m²</div>
+          <div className="mono muted" style={{ fontSize: 11, marginTop: 8 }}>{unit.code} · {isCommercial ? (unit.permittedUse ?? "Commercial") : unit.bedrooms === 0 ? "Studio" : `${unit.bedrooms} bed`} · {unit.areaSqm} m²</div>
         </div>
         <div>
           <div className="eyebrow" style={{ marginBottom: 14 }}>Your progress</div>
@@ -287,25 +335,37 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
 
         {step === 1 && (
           <section className="step-panel">
-            <span className="eyebrow">Step 01 · Personal details</span>
-            <h1 className="step-title">Let's start with you</h1>
-            <p className="step-sub">Just the basics. You can save and come back at any point.</p>
+            <span className="eyebrow">Step 01 · {STEPS[0].label}</span>
+            <h1 className="step-title">{isCommercial ? "Tell us about your business" : "Let's start with you"}</h1>
+            <p className="step-sub">{isCommercial ? "Your company and who we should contact." : "Just the basics. You can save and come back at any point."}</p>
             <div className="card app-form-card">
+              {isCommercial && (
+                <>
+                  <Field label="Registered business name" error={errors.businessName}><input className={`input ${errors.businessName ? "err" : ""}`} value={draft.businessName} onChange={(e) => set("businessName", e.target.value)} placeholder="Brew & Co." /></Field>
+                  <div className="field-row">
+                    <Field label="Entity type"><select className="select" value={draft.businessType} onChange={(e) => set("businessType", e.target.value)}><option>Sole Proprietorship</option><option>Partnership</option><option>Corporation</option><option>Cooperative</option></select></Field>
+                    <Field label="Years operating"><input className="input" type="number" inputMode="numeric" value={draft.yearsOperating} onChange={(e) => set("yearsOperating", e.target.value)} placeholder="3" /></Field>
+                  </div>
+                  <Field label="Nature of business" error={errors.natureOfBusiness}><input className={`input ${errors.natureOfBusiness ? "err" : ""}`} value={draft.natureOfBusiness} onChange={(e) => set("natureOfBusiness", e.target.value)} placeholder="Coffee shop / F&B" /></Field>
+                  <div style={{ borderTop: "1px solid var(--line)", margin: "6px 0 16px" }} />
+                  <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>Primary contact</p>
+                </>
+              )}
               <div className="field-row">
-                <Field label="Legal first name" error={errors.firstName}><input className={`input ${errors.firstName ? "err" : ""}`} value={draft.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Maria" /></Field>
-                <Field label="Legal last name" error={errors.lastName}><input className={`input ${errors.lastName ? "err" : ""}`} value={draft.lastName} onChange={(e) => set("lastName", e.target.value)} placeholder="Santos" /></Field>
+                <Field label={isCommercial ? "Contact first name" : "Legal first name"} error={errors.firstName}><input className={`input ${errors.firstName ? "err" : ""}`} value={draft.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Maria" /></Field>
+                <Field label={isCommercial ? "Contact last name" : "Legal last name"} error={errors.lastName}><input className={`input ${errors.lastName ? "err" : ""}`} value={draft.lastName} onChange={(e) => set("lastName", e.target.value)} placeholder="Santos" /></Field>
               </div>
               <Field label="Email address" why="To send your application updates" error={errors.email}><input className={`input ${errors.email ? "err" : ""}`} type="email" value={draft.email} onChange={(e) => set("email", e.target.value)} placeholder="maria@email.com" /></Field>
               <div className="field-row">
                 <Field label="Mobile number" error={errors.phone}><input className={`input ${errors.phone ? "err" : ""}`} value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+63 917 000 0000" /></Field>
-                <Field label="Date of birth" error={errors.dob}><input className={`input ${errors.dob ? "err" : ""}`} type="date" value={draft.dob} onChange={(e) => set("dob", e.target.value)} /></Field>
+                {!isCommercial && <Field label="Date of birth" error={errors.dob}><input className={`input ${errors.dob ? "err" : ""}`} type="date" value={draft.dob} onChange={(e) => set("dob", e.target.value)} /></Field>}
               </div>
             </div>
-            <Nav onNext={() => goTo(2)} nextLabel="Continue to residence" />
+            <Nav onNext={() => goTo(2)} nextLabel={isCommercial ? "Continue to premises" : "Continue to residence"} />
           </section>
         )}
 
-        {step === 2 && (
+        {step === 2 && !isCommercial && (
           <section className="step-panel">
             <span className="eyebrow">Step 02 · Residence history</span>
             <h1 className="step-title">Where you've lived</h1>
@@ -326,7 +386,23 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
           </section>
         )}
 
-        {step === 3 && (
+        {step === 2 && isCommercial && (
+          <section className="step-panel">
+            <span className="eyebrow">Step 02 · Premises & use</span>
+            <h1 className="step-title">How you'll use the space</h1>
+            <p className="step-sub">Tell us what you'll operate here — it helps confirm the unit's permitted use{unit.permittedUse ? ` (${unit.permittedUse})` : ""}.</p>
+            <div className="card app-form-card">
+              <Field label="Intended use" error={errors.intendedUse}><textarea className={`input ${errors.intendedUse ? "err" : ""}`} rows={3} value={draft.intendedUse} onChange={(e) => set("intendedUse", e.target.value)} placeholder="e.g. Specialty coffee shop with a small kitchen and 20 seats" /></Field>
+              <div className="field-row">
+                <Field label="Approx. number of staff on site"><input className="input" type="number" inputMode="numeric" value={draft.employees} onChange={(e) => set("employees", e.target.value)} placeholder="8" /></Field>
+                <Field label="Preferred lease term"><select className="select" value={draft.employmentLength} onChange={(e) => set("employmentLength", e.target.value)}><option>1 year</option><option>3 years</option><option>5 years</option></select></Field>
+              </div>
+            </div>
+            <Nav onBack={() => goTo(1)} onNext={() => goTo(3)} nextLabel="Continue to financials" />
+          </section>
+        )}
+
+        {step === 3 && !isCommercial && (
           <section className="step-panel">
             <span className="eyebrow">Step 03 · Employment & income</span>
             <h1 className="step-title">Your ability to pay</h1>
@@ -350,11 +426,29 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
           </section>
         )}
 
+        {step === 3 && isCommercial && (
+          <section className="step-panel">
+            <span className="eyebrow">Step 03 · Financials</span>
+            <h1 className="step-title">Business ability to pay</h1>
+            <p className="step-sub">Operators typically look for monthly revenue comfortably above the rent.</p>
+            <div className="card app-form-card">
+              <Field label="Average monthly revenue (₱)" why="Used to assess affordability, kept private" error={errors.grossIncome}>
+                <input className={`input ${errors.grossIncome ? "err" : ""}`} type="text" inputMode="numeric" value={draft.grossIncome} onChange={(e) => set("grossIncome", e.target.value)} placeholder="450000" />
+                <div className="hint">
+                  Rent here is {formatMoney(unit.rent)}/mo{incomeRatio > 0 && ` — your revenue-to-rent ratio: ${incomeRatio}×`}.
+                </div>
+              </Field>
+              <Field label="Other locations / notes" optional><input className="input" value={draft.additionalIncome} onChange={(e) => set("additionalIncome", e.target.value)} placeholder="e.g. 2 existing branches" /></Field>
+            </div>
+            <Nav onBack={() => goTo(2)} onNext={() => goTo(4)} nextLabel="Continue to documents" />
+          </section>
+        )}
+
         {step === 4 && (
           <section className="step-panel">
-            <span className="eyebrow">Step 04 · Documents & household</span>
-            <h1 className="step-title">Proof & who's moving in</h1>
-            <p className="step-sub">{DOCS.filter((d) => draft.documents[d.key].uploaded).length} of {DOCS.length} documents uploaded</p>
+            <span className="eyebrow">Step 04 · {isCommercial ? "Documents & guarantor" : "Documents & household"}</span>
+            <h1 className="step-title">{isCommercial ? "Registration & guarantor" : "Proof & who's moving in"}</h1>
+            <p className="step-sub">{DOCS.filter((d) => docUploaded(d.key)).length} of {DOCS.length} documents uploaded</p>
             <div className="card app-form-card">
               <div className="upload-zone">
                 <div className="ic"><Icon name="upload" size={26} /></div>
@@ -369,13 +463,13 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
 
               <ul className="doc-list">
                 {DOCS.map((d) => {
-                  const done = draft.documents[d.key].uploaded;
+                  const done = docUploaded(d.key);
                   return (
                     <li key={d.key} className={`doc-item ${done ? "done" : ""}`}>
                       <span className="di-ic"><Icon name={done ? "check" : "file"} size={16} /></span>
                       <div>
                         <div className="di-name">{d.label}{!d.required && <span className="muted" style={{ fontWeight: 400 }}> (optional)</span>}</div>
-                        <div className="di-meta">{done ? draft.documents[d.key].fileName ?? "Uploaded" : "Not uploaded yet"}</div>
+                        <div className="di-meta">{done ? draft.documents[d.key]?.fileName ?? "Uploaded" : "Not uploaded yet"}</div>
                       </div>
                       <span className="di-status">
                         {done ? <Stamp variant="approved">Uploaded</Stamp> : (
@@ -390,15 +484,19 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
 
               <div style={{ borderTop: "1px solid var(--line)", margin: "22px 0 18px" }} />
 
-              <Field label="Occupants (including you)">
-                <select className="select" value={draft.occupants} onChange={(e) => set("occupants", e.target.value)}><option>1</option><option>2</option><option>3</option><option>4+</option></select>
-              </Field>
+              {!isCommercial && (
+                <Field label="Occupants (including you)">
+                  <select className="select" value={draft.occupants} onChange={(e) => set("occupants", e.target.value)}><option>1</option><option>2</option><option>3</option><option>4+</option></select>
+                </Field>
+              )}
 
-              <PartyInvite parties={draft.parties} onInvite={inviteParty} onRemove={(id) => set("parties", draft.parties.filter((p) => p.id !== id))} />
+              <PartyInvite commercial={isCommercial} parties={draft.parties} onInvite={inviteParty} onRemove={(id) => set("parties", draft.parties.filter((p) => p.id !== id))} />
 
-              <Field label={`Pets ${unit.petsAllowed ? "(this unit is pet-friendly)" : "(this unit is not pet-friendly)"}`} optional>
-                <input className="input" value={draft.pets} onChange={(e) => set("pets", e.target.value)} placeholder="e.g. 1 cat, spayed" disabled={!unit.petsAllowed} />
-              </Field>
+              {!isCommercial && (
+                <Field label={`Pets ${unit.petsAllowed ? "(this unit is pet-friendly)" : "(this unit is not pet-friendly)"}`} optional>
+                  <input className="input" value={draft.pets} onChange={(e) => set("pets", e.target.value)} placeholder="e.g. 1 cat, spayed" disabled={!unit.petsAllowed} />
+                </Field>
+              )}
             </div>
             <Nav onBack={() => goTo(3)} onNext={() => goTo(5)} nextLabel="Continue to review" />
           </section>
@@ -410,24 +508,49 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
             <h1 className="step-title">Check, consent, and sign</h1>
             <p className="step-sub">Read everything back before it goes. Edit any section in one tap.</p>
 
-            <ReviewBlock title="Personal details" onEdit={() => goTo(1)} rows={[
-              ["Name", `${draft.firstName} ${draft.lastName}`.trim() || "—"],
-              ["Email", draft.email || "—"],
-              ["Mobile", draft.phone || "—"],
-              ["Date of birth", draft.dob || "—"],
-            ]} />
-            <ReviewBlock title="Employment & income" onEdit={() => goTo(3)} rows={[
-              ["Employer", draft.employer || "—"],
-              ["Gross monthly income", draft.grossIncome ? formatMoney(money(toNumber(draft.grossIncome) * 100)) : "—"],
-              ["Income-to-rent", incomeRatio > 0 ? `${incomeRatio}×` : "—"],
-              ["Employment", draft.employmentLength],
-            ]} />
-            <ReviewBlock title="Documents & household" onEdit={() => goTo(4)} rows={[
-              ["Documents", `${DOCS.filter((d) => draft.documents[d.key].uploaded).length} uploaded`],
-              ["Occupants", draft.occupants],
-              ["Co-applicants / guarantors", draft.parties.length ? `${draft.parties.length} invited` : "None"],
-              ["Pets", draft.pets || "None"],
-            ]} />
+            {isCommercial ? (
+              <>
+                <ReviewBlock title="Business details" onEdit={() => goTo(1)} rows={[
+                  ["Business", draft.businessName || "—"],
+                  ["Entity type", draft.businessType || "—"],
+                  ["Nature of business", draft.natureOfBusiness || "—"],
+                  ["Years operating", draft.yearsOperating || "—"],
+                  ["Contact", `${draft.firstName} ${draft.lastName}`.trim() || "—"],
+                  ["Email", draft.email || "—"],
+                ]} />
+                <ReviewBlock title="Premises & financials" onEdit={() => goTo(2)} rows={[
+                  ["Intended use", draft.intendedUse || "—"],
+                  ["Staff on site", draft.employees || "—"],
+                  ["Monthly revenue", draft.grossIncome ? formatMoney(money(toNumber(draft.grossIncome) * 100)) : "—"],
+                  ["Revenue-to-rent", incomeRatio > 0 ? `${incomeRatio}×` : "—"],
+                ]} />
+                <ReviewBlock title="Documents & guarantor" onEdit={() => goTo(4)} rows={[
+                  ["Documents", `${DOCS.filter((d) => docUploaded(d.key)).length} uploaded`],
+                  ["Guarantor / co-signer", draft.parties.length ? `${draft.parties.length} invited` : "None"],
+                ]} />
+              </>
+            ) : (
+              <>
+                <ReviewBlock title="Personal details" onEdit={() => goTo(1)} rows={[
+                  ["Name", `${draft.firstName} ${draft.lastName}`.trim() || "—"],
+                  ["Email", draft.email || "—"],
+                  ["Mobile", draft.phone || "—"],
+                  ["Date of birth", draft.dob || "—"],
+                ]} />
+                <ReviewBlock title="Employment & income" onEdit={() => goTo(3)} rows={[
+                  ["Employer", draft.employer || "—"],
+                  ["Gross monthly income", draft.grossIncome ? formatMoney(money(toNumber(draft.grossIncome) * 100)) : "—"],
+                  ["Income-to-rent", incomeRatio > 0 ? `${incomeRatio}×` : "—"],
+                  ["Employment", draft.employmentLength],
+                ]} />
+                <ReviewBlock title="Documents & household" onEdit={() => goTo(4)} rows={[
+                  ["Documents", `${DOCS.filter((d) => docUploaded(d.key)).length} uploaded`],
+                  ["Occupants", draft.occupants],
+                  ["Co-applicants / guarantors", draft.parties.length ? `${draft.parties.length} invited` : "None"],
+                  ["Pets", draft.pets || "None"],
+                ]} />
+              </>
+            )}
 
             <div className="consent-box">
               <label>
@@ -518,13 +641,13 @@ function ReviewBlock({ title, onEdit, rows }: { title: string; onEdit: () => voi
   );
 }
 
-function PartyInvite({ parties, onInvite, onRemove }: { parties: Party[]; onInvite: (email: string, role: Party["role"]) => void; onRemove: (id: string) => void }) {
+function PartyInvite({ commercial, parties, onInvite, onRemove }: { commercial?: boolean; parties: Party[]; onInvite: (email: string, role: Party["role"]) => void; onRemove: (id: string) => void }) {
   const [email, setEmail] = React.useState("");
-  const [role, setRole] = React.useState<Party["role"]>("co_applicant");
+  const [role, setRole] = React.useState<Party["role"]>(commercial ? "guarantor" : "co_applicant");
   const roleLabel: Record<Party["role"], string> = { co_applicant: "Co-applicant", occupant: "Occupant", guarantor: "Guarantor" };
   return (
     <div className="field">
-      <label>Co-applicant or guarantor <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></label>
+      <label>{commercial ? "Guarantor / co-signer" : "Co-applicant or guarantor"} <span className="muted" style={{ fontWeight: 400 }}>(optional{commercial ? ", recommended for newer businesses" : ""})</span></label>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input className="input" style={{ flex: "1 1 200px" }} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="their@email.com" />
         <select className="select" style={{ width: "auto" }} value={role} onChange={(e) => setRole(e.target.value as Party["role"])}>

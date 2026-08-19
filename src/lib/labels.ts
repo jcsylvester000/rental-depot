@@ -1,4 +1,4 @@
-import type { Amenity, UnitType, UnitStatus, ApplicationStatus } from "@/lib/types";
+import type { Amenity, UnitType, UnitStatus, ApplicationStatus, PropertyClass, ApplicantType } from "@/lib/types";
 
 export const AMENITY_LABELS: Record<Amenity, string> = {
   parking: "Parking",
@@ -20,6 +20,19 @@ export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
   "3br": "3 Bedroom",
   "4br_plus": "4+ Bedroom",
   commercial: "Commercial",
+  office: "Office",
+  retail: "Retail",
+  warehouse: "Warehouse",
+};
+
+export const PROPERTY_CLASS_LABELS: Record<PropertyClass, string> = {
+  residential: "Residential",
+  commercial: "Commercial",
+};
+
+export const APPLICANT_TYPE_LABELS: Record<ApplicantType, string> = {
+  individual: "Individual",
+  business: "Business",
 };
 
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {

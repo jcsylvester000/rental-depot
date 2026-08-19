@@ -65,6 +65,17 @@ export function ListingsBrowser({
         </div>
 
         <div className="filter-group">
+          <div className="filter-title">Property type</div>
+          <div className="chip-row">
+            {([["", "All"], ["residential", "Residential"], ["commercial", "Commercial"]] as const).map(([val, label]) => (
+              <button key={label} className="chip-toggle" aria-pressed={filters.propertyClass === val} onClick={() => update("propertyClass", val)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="filter-group">
           <div className="filter-title">Location</div>
           <select className="select" value={filters.city} onChange={(e) => update("city", e.target.value)}>
             <option value="">All cities</option>
@@ -86,6 +97,7 @@ export function ListingsBrowser({
           />
         </div>
 
+        {filters.propertyClass !== "commercial" && (
         <div className="filter-group">
           <div className="filter-title">Bedrooms</div>
           <div className="chip-row">
@@ -101,18 +113,21 @@ export function ListingsBrowser({
             ))}
           </div>
         </div>
+        )}
 
         <div className="filter-group">
           <div className="filter-title">Move-in by</div>
           <input className="input" type="date" value={filters.moveIn} onChange={(e) => update("moveIn", e.target.value)} />
         </div>
 
+        {filters.propertyClass !== "commercial" && (
         <div className="filter-group">
           <label className="check-row">
             <input type="checkbox" checked={filters.pets} onChange={(e) => update("pets", e.target.checked)} />
             Pet-friendly only
           </label>
         </div>
+        )}
 
         <div className="filter-group">
           <div className="filter-title">Amenities</div>

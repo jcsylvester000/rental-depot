@@ -72,8 +72,14 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const USER_ROLES = ["applicant", "agent", "manager", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
-export const UNIT_TYPES = ["studio", "1br", "2br", "3br", "4br_plus", "commercial"] as const;
+export const UNIT_TYPES = ["studio", "1br", "2br", "3br", "4br_plus", "commercial", "office", "retail", "warehouse"] as const;
 export type UnitType = (typeof UNIT_TYPES)[number];
+
+export const PROPERTY_CLASSES = ["residential", "commercial"] as const;
+export type PropertyClass = (typeof PROPERTY_CLASSES)[number];
+
+export const APPLICANT_TYPES = ["individual", "business"] as const;
+export type ApplicantType = (typeof APPLICANT_TYPES)[number];
 
 export const AMENITIES = [
   "parking",
@@ -117,6 +123,8 @@ export interface Unit {
   code: string; // e.g. "GRD-4821"
   title: string;
   type: UnitType;
+  propertyClass: PropertyClass;
+  permittedUse?: string; // commercial: e.g. "Retail / F&B"
   bedrooms: number;
   bathrooms: number;
   areaSqm: number;
@@ -217,6 +225,13 @@ export interface Application {
   unitId: ID;
   primaryApplicantId: ID;
   status: ApplicationStatus;
+  applicantType: ApplicantType;
+  // Commercial / business applications
+  businessName?: string;
+  businessType?: string;
+  natureOfBusiness?: string;
+  yearsOperating?: number;
+  intendedUse?: string;
   desiredMoveIn?: ISODateString;
   leaseTermMonths?: number;
   monthlyIncome?: Money;
@@ -310,6 +325,9 @@ export interface UnitSummary {
   id: ID;
   code: string;
   title: string;
+  propertyClass: PropertyClass;
+  type: UnitType;
+  permittedUse?: string;
   city: string;
   region: string;
   bedrooms: number;
@@ -348,6 +366,8 @@ export interface AdminQueueRow {
   unitId: ID;
   unitCode: string;
   unitTitle: string;
+  propertyClass: PropertyClass;
+  applicantType: ApplicantType;
   status: ApplicationStatus;
   submittedAt?: ISODateString;
   completenessPct: number;

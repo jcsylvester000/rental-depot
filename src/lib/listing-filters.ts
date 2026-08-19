@@ -4,12 +4,13 @@
  * (for interactive re-filtering). No client-only imports here.
  * ============================================================ */
 
-import type { UnitSummary, Amenity } from "@/lib/types";
+import type { UnitSummary, Amenity, PropertyClass } from "@/lib/types";
 import { AMENITIES } from "@/lib/types";
 
 export type ListingSort = "newest" | "rent_asc" | "rent_desc";
 
 export interface ListingFilters {
+  propertyClass: PropertyClass | "";
   city: string;
   maxRent: number | null; // major units (₱)
   beds: number | null; // minimum bedrooms; 0 = studio; null = any
@@ -20,6 +21,7 @@ export interface ListingFilters {
 }
 
 export const EMPTY_FILTERS: ListingFilters = {
+  propertyClass: "",
   city: "",
   maxRent: null,
   beds: null,
@@ -42,7 +44,9 @@ export function parseFilters(params: Record<string, ParamValue>): ListingFilters
     .filter((a): a is Amenity => (AMENITIES as readonly string[]).includes(a));
   const beds = first(params.beds);
   const sort = first(params.sort);
+  const pc = first(params.class);
   return {
+    propertyClass: pc === "residential" || pc === "commercial" ? pc : "",
     city: first(params.city) ?? "",
     maxRent: first(params.maxRent) ? Number(first(params.maxRent)) : null,
     beds: beds !== undefined && beds !== "" ? Number(beds) : null,
@@ -55,6 +59,7 @@ export function parseFilters(params: Record<string, ParamValue>): ListingFilters
 
 export function filtersToQuery(f: ListingFilters): string {
   const p = new URLSearchParams();
+  if (f.propertyClass) p.set("class", f.propertyClass);
   if (f.city) p.set("city", f.city);
   if (f.maxRent) p.set("maxRent", String(f.maxRent));
   if (f.beds !== null) p.set("beds", String(f.beds));
@@ -67,6 +72,7 @@ export function filtersToQuery(f: ListingFilters): string {
 
 export function applyFilters(units: UnitSummary[], f: ListingFilters): UnitSummary[] {
   let list = units.filter((u) => {
+    if (f.propertyClass && u.propertyClass !== f.propertyClass) return false;
     if (f.city && u.city !== f.city) return false;
     if (f.maxRent && u.rent.amountMinor > f.maxRent * 100) return false;
     if (f.beds !== null) {
@@ -84,6 +90,7 @@ export function applyFilters(units: UnitSummary[], f: ListingFilters): UnitSumma
 
 export function activeFilterCount(f: ListingFilters): number {
   return (
+    (f.propertyClass ? 1 : 0) +
     (f.city ? 1 : 0) +
     (f.maxRent ? 1 : 0) +
     (f.beds !== null ? 1 : 0) +

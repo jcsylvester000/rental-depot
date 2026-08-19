@@ -47,7 +47,7 @@ export function ListingsManager({
           <tbody>
             {units.map((u) => (
               <tr key={u.id}>
-                <td><div className="q-name">{u.title}</div><div className="q-sub">{u.code} · {u.bedrooms === 0 ? "Studio" : `${u.bedrooms} bed`}</div></td>
+                <td><div className="q-name">{u.title}{u.propertyClass === "commercial" && <span className="pill accent" style={{ marginLeft: 6, fontSize: 10 }}>Commercial</span>}</div><div className="q-sub">{u.code} · {u.propertyClass === "commercial" ? (u.permittedUse ?? "Commercial") : u.bedrooms === 0 ? "Studio" : `${u.bedrooms} bed`}</div></td>
                 <td>{formatMoney(u.rent)}</td>
                 <td>
                   <select className="select" style={{ width: "auto", padding: "6px 8px", fontSize: 13 }} value={u.status} onChange={(e) => patch(u.id, { status: e.target.value as UnitStatus })}>
@@ -73,16 +73,31 @@ export function ListingsManager({
   );
 }
 
+const COMMERCIAL_TYPES = [
+  { value: "office", label: "Office" },
+  { value: "retail", label: "Retail" },
+  { value: "warehouse", label: "Warehouse" },
+];
+
 function AddListingForm({ properties, onCreated }: { properties: { id: string; name: string }[]; onCreated: (u: Unit) => void }) {
-  const [form, setForm] = React.useState({ propertyId: properties[0]?.id ?? "", code: "", title: "", bedrooms: 1, rent: "", deposit: "", incomeMultiple: 3, availableFrom: "" });
+  const [form, setForm] = React.useState({
+    propertyId: properties[0]?.id ?? "", propertyClass: "residential", code: "", title: "",
+    bedrooms: 1, commercialType: "retail", permittedUse: "", areaSqm: "", rent: "", deposit: "", incomeMultiple: 3, availableFrom: "",
+  });
   const set = (k: string, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
+  const isCommercial = form.propertyClass === "commercial";
 
   async function create() {
     const r = await fetch("/api/v1/admin/units", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        propertyId: form.propertyId, code: form.code, title: form.title, bedrooms: Number(form.bedrooms),
-        type: form.bedrooms === 0 ? "studio" : `${form.bedrooms}br`,
+        propertyId: form.propertyId, code: form.code, title: form.title,
+        propertyClass: form.propertyClass,
+        permittedUse: isCommercial ? (form.permittedUse || undefined) : undefined,
+        bedrooms: isCommercial ? 0 : Number(form.bedrooms),
+        bathrooms: isCommercial ? 1 : undefined,
+        areaSqm: form.areaSqm ? Number(form.areaSqm) : undefined,
+        type: isCommercial ? form.commercialType : form.bedrooms === 0 ? "studio" : `${form.bedrooms}br`,
         rentMinor: Number(form.rent) * 100, depositMinor: Number(form.deposit || form.rent) * 100 * 2,
         incomeMultiple: Number(form.incomeMultiple), availableFrom: form.availableFrom ? new Date(form.availableFrom).toISOString() : new Date().toISOString(),
         description: form.title,
@@ -94,17 +109,36 @@ function AddListingForm({ properties, onCreated }: { properties: { id: string; n
 
   return (
     <div className="card app-form-card" style={{ marginBottom: 16 }}>
+      <div className="field">
+        <label>Property type</label>
+        <div className="chip-row">
+          {([["residential", "Residential"], ["commercial", "Commercial"]] as const).map(([val, label]) => (
+            <button key={val} type="button" className="chip-toggle" aria-pressed={form.propertyClass === val} onClick={() => set("propertyClass", val)}>{label}</button>
+          ))}
+        </div>
+      </div>
       <div className="field-row">
         <div className="field"><label>Property</label><select className="select" value={form.propertyId} onChange={(e) => set("propertyId", e.target.value)}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-        <div className="field"><label>Unit code</label><input className="input" value={form.code} onChange={(e) => set("code", e.target.value)} placeholder="GRD-4900" /></div>
+        <div className="field"><label>Unit code</label><input className="input" value={form.code} onChange={(e) => set("code", e.target.value)} placeholder={isCommercial ? "SKY-C01" : "GRD-4900"} /></div>
       </div>
-      <div className="field"><label>Title</label><input className="input" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Bright 1-bedroom near transit" /></div>
+      <div className="field"><label>Title</label><input className="input" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder={isCommercial ? "Ground-floor retail unit near transit" : "Bright 1-bedroom near transit"} /></div>
+      {isCommercial ? (
+        <div className="field-row">
+          <div className="field"><label>Space type</label><select className="select" value={form.commercialType} onChange={(e) => set("commercialType", e.target.value)}>{COMMERCIAL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+          <div className="field"><label>Permitted use</label><input className="input" value={form.permittedUse} onChange={(e) => set("permittedUse", e.target.value)} placeholder="Retail / F&B" /></div>
+        </div>
+      ) : (
+        <div className="field-row">
+          <div className="field"><label>Bedrooms</label><input type="number" className="input" value={form.bedrooms} onChange={(e) => set("bedrooms", Number(e.target.value))} /></div>
+          <div className="field"><label>Floor area (m²)</label><input type="number" className="input" value={form.areaSqm} onChange={(e) => set("areaSqm", e.target.value)} placeholder="35" /></div>
+        </div>
+      )}
       <div className="field-row">
-        <div className="field"><label>Bedrooms</label><input type="number" className="input" value={form.bedrooms} onChange={(e) => set("bedrooms", Number(e.target.value))} /></div>
-        <div className="field"><label>Monthly rent (₱)</label><input type="number" className="input" value={form.rent} onChange={(e) => set("rent", e.target.value)} placeholder="25000" /></div>
+        {isCommercial && <div className="field"><label>Floor area (m²)</label><input type="number" className="input" value={form.areaSqm} onChange={(e) => set("areaSqm", e.target.value)} placeholder="80" /></div>}
+        <div className="field"><label>Monthly rent (₱)</label><input type="number" className="input" value={form.rent} onChange={(e) => set("rent", e.target.value)} placeholder={isCommercial ? "80000" : "25000"} /></div>
       </div>
       <div className="field-row">
-        <div className="field"><label>Income multiple</label><input type="number" step="0.5" className="input" value={form.incomeMultiple} onChange={(e) => set("incomeMultiple", Number(e.target.value))} /></div>
+        <div className="field"><label>{isCommercial ? "Revenue multiple" : "Income multiple"}</label><input type="number" step="0.5" className="input" value={form.incomeMultiple} onChange={(e) => set("incomeMultiple", Number(e.target.value))} /></div>
         <div className="field"><label>Available from</label><input type="date" className="input" value={form.availableFrom} onChange={(e) => set("availableFrom", e.target.value)} /></div>
       </div>
       <Button variant="primary" onClick={create} disabled={!form.code || !form.title}><Icon name="check" size={16} /> Create listing</Button>

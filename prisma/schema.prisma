@@ -24,6 +24,16 @@ enum ApplicationStatus {
   declined
 }
 
+enum PropertyClass {
+  residential
+  commercial
+}
+
+enum ApplicantType {
+  individual
+  business
+}
+
 enum PartyRole {
   primary
   co_applicant
@@ -130,6 +140,8 @@ model Unit {
   code           String        @unique
   title          String
   type           String
+  propertyClass  PropertyClass @default(residential)
+  permittedUse   String?
   bedrooms       Int
   bathrooms      Int
   areaSqm        Int
@@ -179,6 +191,12 @@ model Application {
   unitId              String
   primaryApplicantId  String
   status              ApplicationStatus  @default(new)
+  applicantType       ApplicantType      @default(individual)
+  businessName        String?
+  businessType        String?
+  natureOfBusiness    String?
+  yearsOperating      Int?
+  intendedUse         String?
   desiredMoveIn       DateTime?
   leaseTermMonths     Int?
   monthlyIncomeMinor  Int?

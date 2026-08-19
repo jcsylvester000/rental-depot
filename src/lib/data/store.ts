@@ -59,6 +59,12 @@ export interface UploadedDocInput {
 export interface CreateApplicationInput {
   unitId: string;
   applicant: { fullName: string; email: string; phone: string; dateOfBirth?: string };
+  applicantType?: "individual" | "business";
+  businessName?: string;
+  businessType?: string;
+  natureOfBusiness?: string;
+  yearsOperating?: number;
+  intendedUse?: string;
   currentAddress?: string;
   employer?: string;
   position?: string;
@@ -116,6 +122,8 @@ export interface CreateUnitInput {
   code: string;
   title: string;
   type: Unit["type"];
+  propertyClass?: "residential" | "commercial";
+  permittedUse?: string;
   bedrooms: number;
   bathrooms: number;
   areaSqm: number;
