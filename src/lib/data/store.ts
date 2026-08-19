@@ -9,6 +9,7 @@
 import type {
   Application,
   ApplicationDetail,
+  Property,
   Unit,
   UnitSummary,
   UnitStatus,
@@ -39,6 +40,7 @@ export interface DataStore {
   // Discovery
   listUnits(filter?: UnitListFilter): Promise<UnitSummary[]>;
   getUnit(id: string): Promise<Unit | null>;
+  getProperty(id: string): Promise<Property | null>;
 
   // Applications
   listApplications(filter?: ApplicationListFilter): Promise<Application[]>;

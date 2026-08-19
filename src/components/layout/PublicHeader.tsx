@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { BrandMark } from "./BrandMark";
 import { LinkButton } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { useSession } from "@/lib/client/session";
+import { useSaved } from "@/lib/client/saved";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -9,6 +14,9 @@ const LINKS = [
 ];
 
 export function PublicHeader({ active }: { active?: string }) {
+  const { user, ready } = useSession();
+  const { count } = useSaved();
+
   return (
     <header className="nav">
       <div className="wrap nav-inner">
@@ -21,9 +29,23 @@ export function PublicHeader({ active }: { active?: string }) {
           ))}
         </nav>
         <div className="nav-cta">
-          <LinkButton href="/account/login" variant="ghost" size="sm">
-            Sign in
-          </LinkButton>
+          <Link
+            href="/account/saved"
+            className="btn btn-quiet btn-sm"
+            aria-label={`Saved listings${count ? ` (${count})` : ""}`}
+          >
+            <Icon name="heart" size={16} />
+            {count > 0 && <span>{count}</span>}
+          </Link>
+          {ready && user ? (
+            <LinkButton href="/account/profile" variant="ghost" size="sm">
+              <Icon name="users" size={15} /> {user.fullName.split(" ")[0]}
+            </LinkButton>
+          ) : (
+            <LinkButton href="/account/login" variant="ghost" size="sm">
+              Sign in
+            </LinkButton>
+          )}
           <LinkButton href="/listings" variant="primary" size="sm">
             Find a home
           </LinkButton>

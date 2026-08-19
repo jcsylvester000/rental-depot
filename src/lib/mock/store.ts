@@ -74,6 +74,10 @@ export const mockStore: DataStore = {
     return units.find((u) => u.id === id) ?? null;
   },
 
+  async getProperty(id: string) {
+    return properties.find((p) => p.id === id) ?? null;
+  },
+
   async listApplications(filter?: ApplicationListFilter): Promise<Application[]> {
     let list = [...applications];
     if (filter?.status) list = list.filter((a) => a.status === filter.status);

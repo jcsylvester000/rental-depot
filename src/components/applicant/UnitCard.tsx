@@ -3,6 +3,7 @@ import type { UnitSummary } from "@/lib/types";
 import { formatMoney } from "@/lib/money";
 import { Stamp } from "@/components/ui/Stamp";
 import { Icon } from "@/components/ui/Icon";
+import { SaveButton } from "@/components/applicant/SaveButton";
 
 const AVAIL_STAMP: Record<string, { cls: string; label: string }> = {
   vacant: { cls: "approved", label: "Vacant" },
@@ -21,6 +22,7 @@ export function UnitCard({ unit }: { unit: UnitSummary }) {
         <span className="avail">
           <Stamp variant={avail.cls}>{avail.label}</Stamp>
         </span>
+        <SaveButton unitId={unit.id} />
       </div>
       <div className="unit-body">
         <div className="unit-rent">
