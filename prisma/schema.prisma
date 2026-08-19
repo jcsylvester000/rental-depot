@@ -1,0 +1,356 @@
+// Rental Depot — Prisma schema, generated to match src/lib/types (the data contract).
+// Runtime queries run through the Neon serverless driver adapter (works on Netlify).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ApplicationStatus {
+  new
+  incomplete
+  screening
+  complete
+  approved
+  conditional
+  declined
+}
+
+enum PartyRole {
+  primary
+  co_applicant
+  occupant
+  guarantor
+}
+
+enum UnitStatus {
+  vacant
+  pending
+  occupied
+}
+
+enum DocumentType {
+  gov_id
+  payslip
+  income_proof
+  bank_statement
+  reference_letter
+  other
+}
+
+enum DocumentStatus {
+  required
+  uploaded
+  verified
+  rejected
+}
+
+enum ScreeningOutcome {
+  pass
+  flag
+  fail
+  pending
+}
+
+enum DecisionOutcome {
+  approve
+  conditional
+  decline
+}
+
+enum PaymentType {
+  application_fee
+  deposit
+  first_month
+  rent
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  refunded
+  failed
+  waived
+}
+
+enum UserRole {
+  applicant
+  agent
+  manager
+  admin
+}
+
+enum MessageFrom {
+  applicant
+  operator
+  system
+}
+
+enum DocRequestStatus {
+  open
+  fulfilled
+}
+
+model Owner {
+  id           String     @id
+  name         String
+  contactEmail String
+  createdAt    DateTime   @default(now())
+  properties   Property[]
+}
+
+model Property {
+  id          String   @id
+  ownerId     String
+  name        String
+  addressLine String
+  city        String
+  region      String
+  postcode    String?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime @default(now())
+  owner       Owner    @relation(fields: [ownerId], references: [id])
+  units       Unit[]
+
+  @@index([city])
+}
+
+model Unit {
+  id             String        @id
+  propertyId     String
+  code           String        @unique
+  title          String
+  type           String
+  bedrooms       Int
+  bathrooms      Int
+  areaSqm        Int
+  rentMinor      Int
+  rentCurrency   String        @default("PHP")
+  depositMinor   Int
+  depositCurrency String       @default("PHP")
+  status         UnitStatus    @default(vacant)
+  amenities      String[]
+  petsAllowed    Boolean       @default(false)
+  incomeMultiple Float         @default(3)
+  minCreditScore Int?
+  availableFrom  DateTime
+  description    String        @default("")
+  photos         String[]
+  createdAt      DateTime      @default(now())
+  property       Property      @relation(fields: [propertyId], references: [id])
+  applications   Application[]
+  leases         Lease[]
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+model Applicant {
+  id                  String             @id
+  fullName            String
+  email               String             @unique
+  phone               String
+  dateOfBirth         DateTime?
+  govIdRef            String?
+  currentAddress      String?
+  employer            String?
+  position            String?
+  grossIncomeMinor    Int?
+  grossIncomeCurrency String?
+  createdAt           DateTime           @default(now())
+  primaryApplications Application[]      @relation("PrimaryApplicant")
+  parties             ApplicationParty[]
+
+  @@index([email])
+}
+
+model Application {
+  id                  String             @id
+  reference           String             @unique
+  unitId              String
+  primaryApplicantId  String
+  status              ApplicationStatus  @default(new)
+  desiredMoveIn       DateTime?
+  leaseTermMonths     Int?
+  monthlyIncomeMinor  Int?
+  monthlyIncomeCurrency String?
+  consentGivenAt      DateTime?
+  signatureName       String?
+  feeStatus           PaymentStatus      @default(pending)
+  rubric              Json?
+  submittedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @default(now())
+  unit                Unit               @relation(fields: [unitId], references: [id])
+  primaryApplicant    Applicant          @relation("PrimaryApplicant", fields: [primaryApplicantId], references: [id])
+  parties             ApplicationParty[]
+  documents           Document[]
+  references          Reference[]
+  screening           ScreeningResult?
+  decision            Decision?
+  messages            Message[]
+  documentRequests    DocumentRequest[]
+  notes               OperatorNote[]
+  lease               Lease?
+  payments            Payment[]
+
+  @@index([status])
+  @@index([unitId])
+  @@index([submittedAt])
+}
+
+model ApplicationParty {
+  id            String      @id
+  applicationId String
+  applicantId   String
+  role          PartyRole
+  completed     Boolean     @default(false)
+  invitedAt     DateTime?
+  application   Application @relation(fields: [applicationId], references: [id])
+  applicant     Applicant   @relation(fields: [applicantId], references: [id])
+}
+
+model Document {
+  id            String         @id
+  applicationId String
+  type          DocumentType
+  label         String
+  status        DocumentStatus @default(required)
+  assetRef      String?
+  fileName      String?
+  uploadedAt    DateTime?
+  application   Application    @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+}
+
+model Reference {
+  id            String      @id
+  applicationId String
+  name          String
+  relationship  String
+  contact       String
+  kind          String
+  application   Application @relation(fields: [applicationId], references: [id])
+}
+
+model ScreeningResult {
+  id                String           @id
+  applicationId     String           @unique
+  creditScore       Int?
+  creditOutcome     ScreeningOutcome @default(pending)
+  incomeToRent      Float?
+  incomeOutcome     ScreeningOutcome @default(pending)
+  backgroundOutcome ScreeningOutcome @default(pending)
+  evictionOutcome   ScreeningOutcome @default(pending)
+  providerRef       String?
+  completedAt       DateTime?
+  application       Application      @relation(fields: [applicationId], references: [id])
+}
+
+model Decision {
+  id                  String          @id
+  applicationId       String          @unique
+  outcome             DecisionOutcome
+  reasonCode          String
+  reasonText          String?
+  decidedByUserId     String
+  adverseActionIssued Boolean         @default(false)
+  decidedAt           DateTime        @default(now())
+  application         Application     @relation(fields: [applicationId], references: [id])
+}
+
+model Lease {
+  id               String      @id
+  applicationId    String      @unique
+  unitId           String
+  termMonths       Int
+  rentMinor        Int
+  rentCurrency     String      @default("PHP")
+  depositMinor     Int
+  depositCurrency  String      @default("PHP")
+  startDate        DateTime
+  signedByApplicant Boolean    @default(false)
+  signedByOperator Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  application      Application @relation(fields: [applicationId], references: [id])
+  unit             Unit        @relation(fields: [unitId], references: [id])
+  payments         Payment[]
+}
+
+model Payment {
+  id             String        @id
+  type           PaymentType
+  status         PaymentStatus @default(pending)
+  amountMinor    Int
+  amountCurrency String        @default("PHP")
+  applicationId  String?
+  leaseId        String?
+  providerRef    String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  application    Application?  @relation(fields: [applicationId], references: [id])
+  lease          Lease?        @relation(fields: [leaseId], references: [id])
+}
+
+model OperatorNote {
+  id            String      @id
+  applicationId String
+  authorName    String
+  body          String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id])
+}
+
+model Message {
+  id            String      @id
+  applicationId String
+  from          MessageFrom
+  authorName    String?
+  body          String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+}
+
+model DocumentRequest {
+  id            String           @id
+  applicationId String
+  docType       DocumentType
+  label         String
+  reason        String
+  status        DocRequestStatus @default(open)
+  createdAt     DateTime         @default(now())
+  fulfilledAt   DateTime?
+  application   Application      @relation(fields: [applicationId], references: [id])
+}
+
+model User {
+  id           String   @id
+  name         String
+  email        String   @unique
+  role         UserRole @default(agent)
+  propertyIds  String[]
+  passwordHash String?
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id                    String @id @default("singleton")
+  applicationFeeMinor   Int    @default(100000)
+  applicationFeeCurrency String @default("PHP")
+  jurisdictionNote      String @default("")
+  screening             Json
+  branding              Json
+  templates             Json
+  leaseClauses          String @default("")
+  integrations          Json
+}

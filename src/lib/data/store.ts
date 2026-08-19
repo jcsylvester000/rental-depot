@@ -143,7 +143,12 @@ let _store: DataStore | null = null;
 
 export async function getStore(): Promise<DataStore> {
   if (_store) return _store;
-  const { mockStore } = await import("@/lib/mock/store");
-  _store = mockStore;
+  if (process.env.DATABASE_URL) {
+    const { prismaStore } = await import("@/lib/data/prisma-store");
+    _store = prismaStore;
+  } else {
+    const { mockStore } = await import("@/lib/mock/store");
+    _store = mockStore;
+  }
   return _store;
 }

@@ -8,6 +8,6 @@ export async function GET() {
     service: "rental-depot-api",
     version: "v1",
     status: "up",
-    dataSource: "mock", // becomes "prisma" in Phase 6
+    dataSource: process.env.DATABASE_URL ? "prisma-neon" : "mock",
   });
 }
