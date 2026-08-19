@@ -40,18 +40,20 @@ export function PublicHeader({ active }: { active?: string }) {
               <Icon name="heart" size={16} />
               {count > 0 && <span>{count}</span>}
             </Link>
-            {ready && user ? (
-              <LinkButton href="/account/profile" variant="ghost" size="sm">
-                <Icon name="users" size={15} /> {user.fullName.split(" ")[0]}
+            <span className="nav-cta-extra">
+              {ready && user ? (
+                <LinkButton href="/account/profile" variant="ghost" size="sm">
+                  <Icon name="users" size={15} /> {user.fullName.split(" ")[0]}
+                </LinkButton>
+              ) : (
+                <LinkButton href="/account/login" variant="ghost" size="sm">
+                  {t("nav.signIn")}
+                </LinkButton>
+              )}
+              <LinkButton href="/listings" variant="primary" size="sm">
+                {t("cta.findHome")}
               </LinkButton>
-            ) : (
-              <LinkButton href="/account/login" variant="ghost" size="sm">
-                {t("nav.signIn")}
-              </LinkButton>
-            )}
-            <LinkButton href="/listings" variant="primary" size="sm">
-              {t("cta.findHome")}
-            </LinkButton>
+            </span>
             <button
               className="btn btn-ghost btn-sm mobile-menu-btn"
               aria-label="Menu"

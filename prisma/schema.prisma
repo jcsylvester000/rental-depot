@@ -157,6 +157,7 @@ model Unit {
   availableFrom  DateTime
   description    String        @default("")
   photos         String[]
+  views          Int           @default(0)
   createdAt      DateTime      @default(now())
   property       Property      @relation(fields: [propertyId], references: [id])
   applications   Application[]

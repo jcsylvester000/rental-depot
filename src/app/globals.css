@@ -16,8 +16,10 @@
   --verdigris-d:#245652;
   --verdigris-l:#E4EFEC;
   --clay:       #B8623A;
+  --clay-d:     #9A441F;
   --clay-l:     #F5E4DA;
   --amber:      #B5852A;
+  --amber-d:    #8A6218;
   --amber-l:    #F5ECD6;
   --grey:       #6E7180;
   --grey-l:     #9A9CA8;
@@ -51,8 +53,10 @@
   --color-verdigris-d: var(--verdigris-d);
   --color-verdigris-l: var(--verdigris-l);
   --color-clay: var(--clay);
+  --color-clay-d: var(--clay-d);
   --color-clay-l: var(--clay-l);
   --color-amber: var(--amber);
+  --color-amber-d: var(--amber-d);
   --color-amber-l: var(--amber-l);
   --color-grey: var(--grey);
   --color-grey-l: var(--grey-l);
@@ -114,12 +118,12 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 }
 .stamp::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .stamp.is-verified, .stamp.approved  { color: var(--verdigris); background: var(--verdigris-l); }
-.stamp.is-review,   .stamp.review    { color: var(--amber);     background: var(--amber-l); }
+.stamp.is-review,   .stamp.review    { color: var(--amber-d);   background: var(--amber-l); }
 .stamp.is-new,      .stamp.received  { color: var(--ink-soft);  background: var(--paper-2); }
-.stamp.is-declined, .stamp.declined  { color: var(--clay);      background: var(--clay-l); }
-.stamp.conditional                   { color: var(--amber);     background: var(--amber-l); }
+.stamp.is-declined, .stamp.declined  { color: var(--clay-d);    background: var(--clay-l); }
+.stamp.conditional                   { color: var(--amber-d);   background: var(--amber-l); }
 .stamp.screening                     { color: var(--verdigris); background: var(--verdigris-l); }
-.stamp.action, .stamp.incomplete     { color: var(--clay);      background: var(--clay-l); }
+.stamp.action, .stamp.incomplete     { color: var(--clay-d);    background: var(--clay-l); }
 
 /* ---------- buttons ---------- */
 .btn {
@@ -537,6 +541,11 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 /* mobile menu */
 .mobile-menu-btn { display: none; }
 .mobile-menu { display: none; }
+.nav-cta-extra { display: contents; }
+@media (max-width: 620px) {
+  /* Declutter the mobile top bar — sign-in + primary CTA live in the menu instead. */
+  .nav-cta-extra { display: none; }
+}
 @media (max-width: 860px) {
   .mobile-menu-btn { display: inline-flex; }
   .mobile-menu { display: flex; flex-direction: column; gap: 2px; padding: 12px 18px 18px; border-bottom: 1px solid var(--line); background: var(--paper); }
@@ -695,4 +704,7 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 @media (max-width: 720px) {
   .field-row { grid-template-columns: 1fr; }
   .wrap { padding: 0 18px; }
+  /* Wide operator tables scroll horizontally instead of squishing. */
+  .block:has(> .qtable) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .qtable { min-width: 640px; }
 }

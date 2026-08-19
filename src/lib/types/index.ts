@@ -139,6 +139,7 @@ export interface Unit {
   availableFrom: ISODateString;
   description: string;
   photos: string[]; // URLs (Cloudinary later)
+  views: number; // listing view count (drives the analytics funnel)
   createdAt: ISODateString;
 }
 

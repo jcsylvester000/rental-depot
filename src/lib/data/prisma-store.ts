@@ -36,7 +36,7 @@ function mapUnit(u: any): Unit {
     rent: money(u.rentMinor, u.rentCurrency), deposit: money(u.depositMinor, u.depositCurrency),
     status: u.status, amenities: u.amenities, petsAllowed: u.petsAllowed,
     incomeMultiple: u.incomeMultiple, minCreditScore: u.minCreditScore ?? undefined,
-    availableFrom: iso(u.availableFrom)!, description: u.description, photos: u.photos, createdAt: iso(u.createdAt)!,
+    availableFrom: iso(u.availableFrom)!, description: u.description, photos: u.photos, views: u.views ?? 0, createdAt: iso(u.createdAt)!,
   };
 }
 function mapUnitSummary(u: any): UnitSummary {
@@ -290,7 +290,7 @@ export const prismaStore: DataStore = {
     ]);
     const applicationsCount = apps.length;
     const approvals = apps.filter((a) => a.status === "approved" || a.status === "conditional").length;
-    const views = applicationsCount * 9 + 40;
+    const views = allUnits.reduce((sum, u) => sum + (u.views ?? 0), 0);
     const decided = decisions.map((d) => d.application?.submittedAt ? (d.decidedAt.getTime() - d.application.submittedAt.getTime()) / 36e5 : null).filter((x): x is number => x != null);
     const avgTimeToDecisionHours = decided.length ? Math.round(decided.reduce((a, b) => a + b, 0) / decided.length) : 0;
     const statuses: ApplicationStatus[] = ["new", "incomplete", "screening", "complete", "approved", "conditional", "declined"];

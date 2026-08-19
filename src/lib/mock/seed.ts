@@ -88,6 +88,7 @@ export const units: Unit[] = [
     description:
       "A calm two-bedroom with morning light, a short walk from Katipunan Ave. Pet-friendly building with 24/7 security and covered parking.",
     photos: px("1560448204-e02f11c3d0e2", "1502672260266-1c1ef2d93688", "1493809842364-78817add7ffb"),
+    views: 210,
     createdAt: "2026-07-20T02:00:00.000Z",
   },
   {
@@ -111,6 +112,7 @@ export const units: Unit[] = [
     description:
       "Efficient high-floor studio with skyline views, building gym, and fast elevators. Ideal for a single professional.",
     photos: px("1522771739844-6a9f6d5f14af", "1554995207-c18c203602cb"),
+    views: 95,
     createdAt: "2026-07-22T02:00:00.000Z",
   },
   {
@@ -134,6 +136,7 @@ export const units: Unit[] = [
     description:
       "Double-height loft steps from Legazpi Sunday Market. In-unit laundry, pool access, and secure parking.",
     photos: px("1522708323590-d24dbb6b0267", "1493809842364-78817add7ffb", "1524758631624-e2822e304c36"),
+    views: 140,
     createdAt: "2026-07-25T02:00:00.000Z",
   },
   {
@@ -157,6 +160,7 @@ export const units: Unit[] = [
     description:
       "Family-sized three-bedroom with two baths, in-unit laundry, and full amenity access. Two covered parking slots.",
     photos: px("1600585154340-be6161a56a0c", "1560185007-cde436f6a4d0", "1522708323590-d24dbb6b0267"),
+    views: 120,
     createdAt: "2026-07-28T02:00:00.000Z",
   },
   {
@@ -180,6 +184,7 @@ export const units: Unit[] = [
     description:
       "Ground-floor one-bedroom opening to a shared garden. Quiet, pet-friendly, with a private balcony.",
     photos: px("1493809842364-78817add7ffb", "1449844908441-8829872d2607", "1560448204-e02f11c3d0e2"),
+    views: 88,
     createdAt: "2026-08-01T02:00:00.000Z",
   },
   {
@@ -194,7 +199,7 @@ export const units: Unit[] = [
     areaSqm: 32,
     rent: money(2600000),
     deposit: money(5200000),
-    status: "vacant",
+    status: "occupied",
     amenities: ["furnished", "aircon", "security", "elevator", "gym", "pool"],
     petsAllowed: false,
     incomeMultiple: 3,
@@ -203,6 +208,7 @@ export const units: Unit[] = [
     description:
       "Move-in-ready furnished studio with full amenities. Perfect for relocating professionals.",
     photos: px("1554995207-c18c203602cb", "1524758631624-e2822e304c36"),
+    views: 76,
     createdAt: "2026-08-03T02:00:00.000Z",
   },
   {
@@ -226,6 +232,7 @@ export const units: Unit[] = [
     description:
       "High-visibility corner retail unit with wide frontage on a busy foot-traffic street. Suited to café, F&B, or boutique retail. Grease trap and heavy-power provisions available.",
     photos: px("1441986300917-64674bd600d8", "1604719312566-8912e9227c6a", "1567521464027-f127ff144326"),
+    views: 64,
     createdAt: "2026-08-05T02:00:00.000Z",
   },
   {
@@ -249,6 +256,7 @@ export const units: Unit[] = [
     description:
       "Fitted office suite with meeting room and pantry, close to Katipunan transit. Ideal for a small firm or back-office team.",
     photos: px("1497366216548-37526070297c", "1497215728101-856f4ea42174", "1524758631624-e2822e304c36"),
+    views: 52,
     createdAt: "2026-08-06T02:00:00.000Z",
   },
 ];
@@ -419,6 +427,73 @@ export const operatorNotes: OperatorNote[] = [
 users.push(
   { id: "user_agent", name: "Lea Fernandez", email: "lea@rentaldepot.example", role: "agent", propertyIds: ["prop_1"], createdAt: "2026-02-01T02:00:00.000Z" },
   { id: "user_admin", name: "Marco Diaz", email: "marco@rentaldepot.example", role: "admin", propertyIds: [], createdAt: "2026-01-10T02:00:00.000Z" },
+);
+
+/* ---- Real-data enrichment: Compare candidates, an occupied unit, more decisions, real flags ---- */
+
+applicants.push(
+  { id: "appl_josef", fullName: "Josef Villanueva", email: "josef@email.com", phone: "+63 917 101 2020", currentAddress: "Katipunan Ave, Quezon City", employer: "Acme Analytics", position: "Data Analyst", grossMonthlyIncome: money(9000000), createdAt: "2026-08-17T03:00:00.000Z" },
+  { id: "appl_amara", fullName: "Amara Okonkwo", email: "amara@email.com", phone: "+63 917 303 4040", currentAddress: "Teachers Village, Quezon City", employer: "Vega Health", position: "Physician", grossMonthlyIncome: money(10500000), createdAt: "2026-08-18T03:00:00.000Z" },
+  { id: "appl_grace", fullName: "Grace Lim", email: "grace@email.com", phone: "+63 917 505 6060", currentAddress: "Legazpi St, Makati", employer: "Meridian Bank", position: "Branch Manager", grossMonthlyIncome: money(13000000), createdAt: "2026-08-10T02:00:00.000Z" },
+  { id: "appl_tomas", fullName: "Tomas Reyes", email: "tomas@email.com", phone: "+63 917 707 8080", currentAddress: "Cubao, Quezon City", employer: "Independent courier", position: "Rider", grossMonthlyIncome: money(4000000), createdAt: "2026-08-12T02:00:00.000Z" },
+  { id: "appl_nadia", fullName: "Nadia Haddad", email: "nadia@email.com", phone: "+63 917 909 1010", currentAddress: "Rockwell, Makati", employer: "Self-employed", position: "Architect", grossMonthlyIncome: money(20000000), createdAt: "2026-08-19T02:00:00.000Z" },
+);
+
+applications.push(
+  { id: "app_2046", reference: "APP-2046", unitId: "unit_1", primaryApplicantId: "appl_josef", status: "complete", applicantType: "individual", desiredMoveIn: "2026-09-01T00:00:00.000Z", leaseTermMonths: 12, monthlyIncome: money(9000000), consentGivenAt: "2026-08-17T05:00:00.000Z", signatureName: "Josef Villanueva", feeStatus: "paid", rubric: { incomeStability: 78, creditHistory: 74, rentalHistory: 80, completeness: 100, overall: 78 }, submittedAt: "2026-08-17T06:00:00.000Z", createdAt: "2026-08-17T05:30:00.000Z", updatedAt: "2026-08-17T08:00:00.000Z" },
+  { id: "app_2047", reference: "APP-2047", unitId: "unit_1", primaryApplicantId: "appl_amara", status: "screening", applicantType: "individual", desiredMoveIn: "2026-09-01T00:00:00.000Z", leaseTermMonths: 12, monthlyIncome: money(10500000), consentGivenAt: "2026-08-18T05:00:00.000Z", signatureName: "Amara Okonkwo", feeStatus: "paid", rubric: { incomeStability: 86, creditHistory: 80, rentalHistory: 82, completeness: 100, overall: 83 }, submittedAt: "2026-08-18T06:00:00.000Z", createdAt: "2026-08-18T05:30:00.000Z", updatedAt: "2026-08-18T06:00:00.000Z" },
+  { id: "app_2038", reference: "APP-2038", unitId: "unit_6", primaryApplicantId: "appl_grace", status: "approved", applicantType: "individual", desiredMoveIn: "2026-08-15T00:00:00.000Z", leaseTermMonths: 12, monthlyIncome: money(13000000), consentGivenAt: "2026-08-10T05:00:00.000Z", signatureName: "Grace Lim", feeStatus: "paid", rubric: { incomeStability: 94, creditHistory: 90, rentalHistory: 88, completeness: 100, overall: 91 }, submittedAt: "2026-08-10T06:00:00.000Z", createdAt: "2026-08-10T05:30:00.000Z", updatedAt: "2026-08-12T02:00:00.000Z" },
+  { id: "app_2040", reference: "APP-2040", unitId: "unit_5", primaryApplicantId: "appl_tomas", status: "declined", applicantType: "individual", desiredMoveIn: "2026-09-05T00:00:00.000Z", leaseTermMonths: 12, monthlyIncome: money(4000000), consentGivenAt: "2026-08-12T05:00:00.000Z", signatureName: "Tomas Reyes", feeStatus: "paid", rubric: { incomeStability: 48, creditHistory: 60, rentalHistory: 55, completeness: 80, overall: 55 }, submittedAt: "2026-08-12T06:00:00.000Z", createdAt: "2026-08-12T05:30:00.000Z", updatedAt: "2026-08-15T02:00:00.000Z" },
+  { id: "app_2048", reference: "APP-2048", unitId: "unit_4", primaryApplicantId: "appl_nadia", status: "new", applicantType: "individual", desiredMoveIn: "2026-10-01T00:00:00.000Z", leaseTermMonths: 12, monthlyIncome: money(20000000), consentGivenAt: "2026-08-19T05:00:00.000Z", signatureName: "Nadia Haddad", feeStatus: "pending", submittedAt: "2026-08-19T06:00:00.000Z", createdAt: "2026-08-19T05:30:00.000Z", updatedAt: "2026-08-19T06:00:00.000Z" },
+);
+
+parties.push(
+  { id: "party_2046", applicationId: "app_2046", applicantId: "appl_josef", role: "primary", completed: true },
+  { id: "party_2047", applicationId: "app_2047", applicantId: "appl_amara", role: "primary", completed: true },
+  { id: "party_2038", applicationId: "app_2038", applicantId: "appl_grace", role: "primary", completed: true },
+  { id: "party_2040", applicationId: "app_2040", applicantId: "appl_tomas", role: "primary", completed: true },
+  { id: "party_2048", applicationId: "app_2048", applicantId: "appl_nadia", role: "primary", completed: true },
+);
+
+documents.push(
+  { id: "doc_2046_1", applicationId: "app_2046", type: "gov_id", label: "Government ID", status: "verified", uploadedAt: "2026-08-17T05:40:00.000Z" },
+  { id: "doc_2046_2", applicationId: "app_2046", type: "payslip", label: "Payslip", status: "verified", uploadedAt: "2026-08-17T05:41:00.000Z" },
+  { id: "doc_2046_3", applicationId: "app_2046", type: "income_proof", label: "Bank statement", status: "verified", uploadedAt: "2026-08-17T05:42:00.000Z" },
+  { id: "doc_2047_1", applicationId: "app_2047", type: "gov_id", label: "Government ID", status: "verified", uploadedAt: "2026-08-18T05:40:00.000Z" },
+  { id: "doc_2047_2", applicationId: "app_2047", type: "payslip", label: "Payslip", status: "verified", uploadedAt: "2026-08-18T05:41:00.000Z" },
+  { id: "doc_2047_3", applicationId: "app_2047", type: "income_proof", label: "Bank statement", status: "verified", uploadedAt: "2026-08-18T05:42:00.000Z" },
+  { id: "doc_2038_1", applicationId: "app_2038", type: "gov_id", label: "Government ID", status: "verified", uploadedAt: "2026-08-10T05:40:00.000Z" },
+  { id: "doc_2038_2", applicationId: "app_2038", type: "payslip", label: "Payslip", status: "verified", uploadedAt: "2026-08-10T05:41:00.000Z" },
+  { id: "doc_2038_3", applicationId: "app_2038", type: "income_proof", label: "Bank statement", status: "verified", uploadedAt: "2026-08-10T05:42:00.000Z" },
+  { id: "doc_2040_1", applicationId: "app_2040", type: "gov_id", label: "Government ID", status: "verified", uploadedAt: "2026-08-12T05:40:00.000Z" },
+  { id: "doc_2040_2", applicationId: "app_2040", type: "payslip", label: "Payslip", status: "verified", uploadedAt: "2026-08-12T05:41:00.000Z" },
+  { id: "doc_2048_1", applicationId: "app_2048", type: "gov_id", label: "Government ID", status: "uploaded", uploadedAt: "2026-08-19T05:40:00.000Z" },
+);
+
+screeningResults.push(
+  { id: "scr_2046", applicationId: "app_2046", creditScore: 690, creditOutcome: "pass", incomeToRent: 3.1, incomeOutcome: "pass", backgroundOutcome: "flag", evictionOutcome: "pass", providerRef: "SCR-EXT-55340", completedAt: "2026-08-17T07:00:00.000Z" },
+  { id: "scr_2047", applicationId: "app_2047", creditScore: 705, creditOutcome: "pass", incomeToRent: 3.7, incomeOutcome: "pass", backgroundOutcome: "pass", evictionOutcome: "pass", providerRef: "SCR-EXT-55351", completedAt: "2026-08-18T07:30:00.000Z" },
+  { id: "scr_2038", applicationId: "app_2038", creditScore: 780, creditOutcome: "pass", incomeToRent: 5.0, incomeOutcome: "pass", backgroundOutcome: "pass", evictionOutcome: "pass", providerRef: "SCR-EXT-55088", completedAt: "2026-08-11T02:00:00.000Z" },
+  { id: "scr_2040", applicationId: "app_2040", creditScore: 640, creditOutcome: "pass", incomeToRent: 1.8, incomeOutcome: "flag", backgroundOutcome: "pass", evictionOutcome: "pass", providerRef: "SCR-EXT-55120", completedAt: "2026-08-13T02:00:00.000Z" },
+);
+
+decisions.push(
+  { id: "dec_2038", applicationId: "app_2038", outcome: "approve", reasonCode: "meets_criteria", reasonText: "Excellent income-to-rent and clean screening.", decidedByUserId: "user_pm", adverseActionIssued: false, decidedAt: "2026-08-12T02:00:00.000Z" },
+  { id: "dec_2040", applicationId: "app_2040", outcome: "decline", reasonCode: "income_below", reasonText: "Verified income below the 3× threshold for this unit.", decidedByUserId: "user_pm", adverseActionIssued: true, decidedAt: "2026-08-15T02:00:00.000Z" },
+);
+
+leases.push(
+  { id: "lease_2038", applicationId: "app_2038", unitId: "unit_6", termMonths: 12, rent: money(2600000), deposit: money(5200000), startDate: "2026-08-15T00:00:00.000Z", signedByApplicant: true, signedByOperator: true, createdAt: "2026-08-12T02:05:00.000Z" },
+);
+
+payments.push(
+  { id: "pay_2038_fee", type: "application_fee", status: "paid", amount: money(100000), applicationId: "app_2038", paidAt: "2026-08-10T05:00:00.000Z", createdAt: "2026-08-10T05:00:00.000Z" },
+  { id: "pay_2038_deposit", type: "deposit", status: "paid", amount: money(5200000), leaseId: "lease_2038", paidAt: "2026-08-14T02:00:00.000Z", createdAt: "2026-08-12T02:05:00.000Z" },
+);
+
+messages.push(
+  { id: "msg_2038_1", applicationId: "app_2038", from: "operator", authorName: "Property Manager", body: "Welcome, Grace! Your lease is signed and the unit is yours from Aug 15.", createdAt: "2026-08-12T02:10:00.000Z" },
+  { id: "msg_2040_1", applicationId: "app_2040", from: "operator", authorName: "Property Manager", body: "Thank you for applying, Tomas. Unfortunately we can't proceed on this unit at this time.", createdAt: "2026-08-15T02:05:00.000Z" },
 );
 
 export const settings: AppSettings = {

@@ -318,8 +318,8 @@ export const mockStore: DataStore = {
     const applicationsCount = apps.length;
     const approvals = apps.filter((a) => a.status === "approved" || a.status === "conditional").length;
     const leasesCount = scopedLeases.length;
-    // Views are not tracked in the mock; approximate for the funnel demo.
-    const views = applicationsCount * 9 + 40;
+    // Real per-unit listing views (seeded), summed across the scoped units.
+    const views = scopedUnits.reduce((sum, u) => sum + (u.views ?? 0), 0);
 
     const decided = decisions.map((d) => {
       const app = apps.find((a) => a.id === d.applicationId);
@@ -547,6 +547,7 @@ export const mockStore: DataStore = {
       availableFrom: input.availableFrom,
       description: input.description,
       photos: [],
+      views: 0,
       createdAt: new Date().toISOString(),
     };
     units.push(unit);
