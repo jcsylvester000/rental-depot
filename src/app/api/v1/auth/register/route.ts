@@ -1,11 +1,11 @@
 import { type NextRequest } from "next/server";
-import { ok, badRequest, serverError } from "@/lib/api/response";
+import bcrypt from "bcryptjs";
+import { ok, badRequest, fail, serverError } from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/v1/auth/register — STUB (Phase 1).
- *  Validates shape and returns a mock session. Real account
- *  creation + hashing land in Phase 6. Contract targets mobile. */
+/** POST /api/v1/auth/register — create an applicant account (hashed password). */
 export async function POST(req: NextRequest) {
   try {
     const { fullName, email, password } = (await req.json()) as {
@@ -17,15 +17,17 @@ export async function POST(req: NextRequest) {
     if (!email || !email.includes("@")) return badRequest("A valid email is required");
     if (!password || password.length < 8) return badRequest("Password must be at least 8 characters");
 
-    return ok(
-      {
-        user: { id: "appl_local", fullName, email, role: "applicant" as const },
-        token: `mock.${Buffer.from(email).toString("base64url")}`,
-        note: "Stubbed auth — real account creation arrives in Phase 6.",
-      },
-      undefined,
-      { status: 201 },
-    );
+    const normalized = email.toLowerCase().trim();
+    const existing = await prisma.user.findUnique({ where: { email: normalized } });
+    if (existing) return fail("email_taken", "An account with this email already exists", 409);
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const count = await prisma.user.count();
+    const user = await prisma.user.create({
+      data: { id: `user_${count + 1}_${Date.now()}`, name: fullName.trim(), email: normalized, role: "applicant", propertyIds: [], passwordHash },
+    });
+
+    return ok({ id: user.id, name: user.name, email: user.email, role: user.role }, undefined, { status: 201 });
   } catch {
     return serverError("Registration failed");
   }

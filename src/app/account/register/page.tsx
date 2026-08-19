@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { PublicHeader } from "@/components/layout/PublicHeader";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { useSession } from "@/lib/client/session";
 
 function strength(pw: string): { pct: number; label: string; color: string } {
   let score = 0;
@@ -25,27 +25,37 @@ function strength(pw: string): { pct: number; label: string; color: string } {
 }
 
 export default function RegisterPage() {
-  const { login } = useSession();
   const router = useRouter();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
   const s = strength(password);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError("Please enter your name");
     if (!email.includes("@")) return setError("Enter a valid email address");
     if (password.length < 8) return setError("Use at least 8 characters");
-    login(email, name);
+    setBusy(true);
+    const res = await fetch("/api/v1/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fullName: name, email, password }),
+    });
+    const body = await res.json();
+    if (!body.ok) { setBusy(false); return setError(body.error?.message ?? "Could not create your account"); }
+    const signRes = await signIn("credentials", { email, password, redirect: false });
+    setBusy(false);
+    if (!signRes || signRes.error) { router.push("/account/login"); return; }
     router.push("/account/profile");
+    router.refresh();
   }
 
   return (
     <>
       <PublicHeader />
-      <div className="wrap">
+      <div className="wrap" id="main">
         <div className="card auth-card">
           <span className="eyebrow">Get started</span>
           <h1 style={{ marginTop: 8 }}>Create your account</h1>
@@ -74,8 +84,8 @@ export default function RegisterPage() {
               )}
             </div>
             {error && <div className="err-msg" role="alert"><Icon name="flag" size={14} /> {error}</div>}
-            <Button type="submit" variant="primary" size="lg" style={{ width: "100%", marginTop: 8 }}>
-              Create account
+            <Button type="submit" variant="primary" size="lg" style={{ width: "100%", marginTop: 8 }} disabled={busy}>
+              {busy ? "Creating…" : "Create account"}
             </Button>
           </form>
           <p className="muted" style={{ fontSize: 14, marginTop: 20, textAlign: "center" }}>

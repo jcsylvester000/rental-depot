@@ -3,8 +3,12 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
+import bcrypt from "bcryptjs";
 import ws from "ws";
 import fs from "node:fs";
+
+const OPERATOR_PW = bcrypt.hashSync("operator123", 10);
+const APPLICANT_PW = bcrypt.hashSync("applicant123", 10);
 
 if (typeof WebSocket === "undefined") neonConfig.webSocketConstructor = ws;
 
@@ -65,9 +69,11 @@ async function main() {
   ] });
 
   await prisma.user.createMany({ data: [
-    { id: "user_pm", name: "Property Manager", email: "pm@rentaldepot.example", role: "manager", propertyIds: [], createdAt: D("2026-01-04T02:00:00.000Z")! },
-    { id: "user_agent", name: "Lea Fernandez", email: "lea@rentaldepot.example", role: "agent", propertyIds: ["prop_1"], createdAt: D("2026-02-01T02:00:00.000Z")! },
-    { id: "user_admin", name: "Marco Diaz", email: "marco@rentaldepot.example", role: "admin", propertyIds: [], createdAt: D("2026-01-10T02:00:00.000Z")! },
+    { id: "user_pm", name: "Property Manager", email: "pm@rentaldepot.example", role: "manager", propertyIds: [], passwordHash: OPERATOR_PW, createdAt: D("2026-01-04T02:00:00.000Z")! },
+    { id: "user_agent", name: "Lea Fernandez", email: "lea@rentaldepot.example", role: "agent", propertyIds: ["prop_1"], passwordHash: OPERATOR_PW, createdAt: D("2026-02-01T02:00:00.000Z")! },
+    { id: "user_admin", name: "Marco Diaz", email: "marco@rentaldepot.example", role: "admin", propertyIds: [], passwordHash: OPERATOR_PW, createdAt: D("2026-01-10T02:00:00.000Z")! },
+    // Demo applicant login (matches the seeded Maria Santos applications).
+    { id: "user_maria", name: "Maria Santos", email: "maria@email.com", role: "applicant", propertyIds: [], passwordHash: APPLICANT_PW, createdAt: D("2026-08-17T06:00:00.000Z")! },
   ] });
 
   await prisma.application.createMany({ data: [

@@ -19,27 +19,23 @@ const KEY = "rd.profile";
 const EMPTY: Profile = { phone: "", currentAddress: "", employer: "", position: "", grossIncome: "" };
 
 export default function ProfilePage() {
-  const { user, ready, update } = useSession();
+  const { user, ready } = useSession();
   const { toast } = useToast();
-  const [name, setName] = React.useState("");
   const [profile, setProfile] = React.useState<Profile>(EMPTY);
 
   React.useEffect(() => {
-    // Hydrate name from session + reusable details from localStorage.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (user) setName(user.fullName);
+    // Hydrate reusable details from localStorage.
     try {
       const raw = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setProfile({ ...EMPTY, ...JSON.parse(raw) });
     } catch {
       /* ignore */
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [user]);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    update({ fullName: name });
     try {
       localStorage.setItem(KEY, JSON.stringify(profile));
     } catch {
@@ -69,7 +65,7 @@ export default function ProfilePage() {
 
       <form onSubmit={save} className="card" style={{ padding: 26 }}>
         <div className="field-row">
-          <div className="field"><label>Full name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field"><label>Full name</label><input className="input" value={user?.fullName ?? ""} disabled /></div>
           <div className="field"><label>Email</label><input className="input" value={user?.email ?? ""} disabled /></div>
         </div>
         <div className="field-row">

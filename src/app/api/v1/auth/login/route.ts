@@ -1,23 +1,24 @@
 import { type NextRequest } from "next/server";
-import { ok, badRequest, serverError } from "@/lib/api/response";
+import bcrypt from "bcryptjs";
+import { ok, badRequest, fail, serverError } from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/v1/auth/login  — STUB (Phase 1).
- *  Validates shape and returns a mock session. Real credential
- *  verification + signed tokens land in Phase 6 (Auth.js). The
- *  request/response contract here is what the mobile app targets. */
+/** POST /api/v1/auth/login — credential check for API/mobile clients.
+ *  The web app signs in through Auth.js (/api/auth). This verifies against
+ *  the same User table and returns the identity (no cookie is set). */
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = (await req.json()) as { email?: string; password?: string };
     if (!email || !email.includes("@")) return badRequest("A valid email is required");
-    if (!password || password.length < 6) return badRequest("Password must be at least 6 characters");
+    if (!password) return badRequest("Password is required");
 
-    return ok({
-      user: { id: "appl_local", fullName: email.split("@")[0], email, role: "applicant" as const },
-      token: `mock.${Buffer.from(email).toString("base64url")}`,
-      note: "Stubbed auth — real sessions arrive in Phase 6.",
-    });
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+      return fail("invalid_credentials", "Those credentials didn't match", 401);
+    }
+    return ok({ user: { id: user.id, fullName: user.name, email: user.email, role: user.role } });
   } catch {
     return serverError("Login failed");
   }
