@@ -36,6 +36,23 @@ export interface ApplicationListFilter {
   sort?: "newest" | "oldest" | "completeness" | "score";
 }
 
+export interface CreateApplicationInput {
+  unitId: string;
+  applicant: { fullName: string; email: string; phone: string; dateOfBirth?: string };
+  currentAddress?: string;
+  employer?: string;
+  position?: string;
+  monthlyIncomeMinor?: number;
+  desiredMoveIn?: string;
+  leaseTermMonths?: number;
+  occupants?: number;
+  pets?: string;
+  documentsUploaded?: string[]; // document type keys marked uploaded
+  consent: boolean;
+  signatureName: string;
+  feePaid: boolean;
+}
+
 export interface DataStore {
   // Discovery
   listUnits(filter?: UnitListFilter): Promise<UnitSummary[]>;
@@ -46,6 +63,7 @@ export interface DataStore {
   listApplications(filter?: ApplicationListFilter): Promise<Application[]>;
   getApplicationByRef(reference: string): Promise<ApplicationDetail | null>;
   getApplication(id: string): Promise<ApplicationDetail | null>;
+  createApplication(input: CreateApplicationInput): Promise<Application>;
 }
 
 /**

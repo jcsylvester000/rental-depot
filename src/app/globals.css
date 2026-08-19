@@ -360,6 +360,74 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   .amenity-grid { grid-template-columns: 1fr; }
 }
 
+/* ============================================================
+   PHASE 2 — Application Wizard
+   ============================================================ */
+.app-shell { display: grid; grid-template-columns: 300px 1fr; gap: 40px; max-width: 1120px; margin: 0 auto; padding: 32px 28px 60px; align-items: start; }
+.app-side { position: sticky; top: 82px; display: flex; flex-direction: column; gap: 24px; }
+.unit-mini { padding: 18px; border-radius: var(--r-md); background: var(--paper-2); border: 1px solid var(--line); }
+.unit-mini .rent { font-family: var(--ff-display); font-size: 24px; font-weight: 600; }
+.unit-mini .addr { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+
+.app-main { min-width: 0; }
+.app-progress-mobile { display: none; margin-bottom: 20px; }
+
+.step-panel { animation: rise .4s var(--step); }
+.step-title { font-size: clamp(24px, 3.5vw, 32px); margin: 10px 0 6px; }
+.step-sub { color: var(--ink-soft); margin: 0 0 22px; }
+.app-form-card { padding: 26px; }
+.app-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 12px; }
+
+/* upload */
+.upload-zone { border: 2px dashed var(--line); border-radius: var(--r-md); padding: 30px 20px; text-align: center; cursor: pointer; transition: all .15s var(--step); background: var(--paper-2); }
+.upload-zone:hover, .upload-zone:focus-visible { border-color: var(--verdigris); background: var(--verdigris-l); }
+.upload-zone .ic { color: var(--verdigris); margin-bottom: 8px; display: flex; justify-content: center; }
+.doc-list { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.doc-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.doc-item.done { border-color: var(--verdigris); background: var(--verdigris-l); }
+.doc-item .di-ic { width: 34px; height: 34px; border-radius: 7px; background: var(--paper-2); display: grid; place-items: center; color: var(--grey); flex: none; }
+.doc-item.done .di-ic { background: var(--white); color: var(--verdigris); }
+.doc-item .di-name { font-weight: 600; font-size: 14px; }
+.doc-item .di-meta { font-size: 12px; color: var(--grey); }
+.doc-item .di-status { margin-left: auto; }
+
+/* party (co-applicant/guarantor) */
+.party-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: 14px; margin-bottom: 8px; }
+.party-item .p-role { margin-left: auto; }
+
+/* review */
+.review-block { border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 14px; overflow: hidden; }
+.rb-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+.rb-head h4 { font-size: 15px; }
+.rb-head a, .rb-head button { font-size: 13px; color: var(--verdigris); font-weight: 600; background: none; border: none; cursor: pointer; }
+.rb-body { padding: 8px 16px; }
+.rb-body .r { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--paper-3); font-size: 14px; }
+.rb-body .r:last-child { border-bottom: none; }
+.rb-body .r span { color: var(--grey); }
+
+/* consent + signature */
+.consent-box { display: flex; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r-md); margin: 20px 0; background: var(--paper-2); }
+.consent-box label { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; font-size: 13.5px; line-height: 1.5; }
+.consent-box input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--verdigris); flex: none; }
+.sign-pad { border: 1.5px solid var(--line); border-radius: var(--r-md); padding: 20px; text-align: center; background: var(--white); }
+.sign-pad .sig { font-family: var(--ff-display); font-style: italic; font-size: 30px; color: var(--ink); min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.sign-pad .sig.empty { color: var(--grey-l); font-size: 18px; font-style: normal; font-family: var(--ff-body); }
+
+/* fee */
+.fee-box { display: flex; justify-content: space-between; align-items: center; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-md); margin: 18px 0; }
+.fee-box.paid { border-color: var(--verdigris); background: var(--verdigris-l); }
+.fee-amount { font-family: var(--ff-display); font-size: 22px; font-weight: 600; }
+
+/* submitted */
+.submitted-card { max-width: 560px; margin: 60px auto; padding: 44px 36px; text-align: center; }
+.submitted-card .big-check { width: 64px; height: 64px; border-radius: 50%; background: var(--verdigris-l); color: var(--verdigris); display: grid; place-items: center; margin: 0 auto 20px; }
+
+@media (max-width: 860px) {
+  .app-shell { grid-template-columns: 1fr; gap: 0; padding: 16px 18px 48px; }
+  .app-side { position: static; display: none; }
+  .app-progress-mobile { display: block; }
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 720px) {
   .field-row { grid-template-columns: 1fr; }

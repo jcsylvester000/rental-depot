@@ -7,8 +7,20 @@
  * not Unit. We enrich reads from Property at read time.
  * ============================================================ */
 
-import type { DataStore, UnitListFilter, ApplicationListFilter } from "@/lib/data/store";
-import type { Unit, UnitSummary, Application, ApplicationDetail } from "@/lib/types";
+import type {
+  DataStore,
+  UnitListFilter,
+  ApplicationListFilter,
+  CreateApplicationInput,
+} from "@/lib/data/store";
+import type {
+  Unit,
+  UnitSummary,
+  Application,
+  ApplicationDetail,
+  ApplicationDocument,
+  DocumentType,
+} from "@/lib/types";
 import {
   units,
   properties,
@@ -101,6 +113,76 @@ export const mockStore: DataStore = {
   async getApplicationByRef(reference: string): Promise<ApplicationDetail | null> {
     const app = applications.find((a) => a.reference === reference);
     return app ? this.getApplication(app.id) : null;
+  },
+
+  async createApplication(input: CreateApplicationInput): Promise<Application> {
+    const now = new Date().toISOString();
+
+    // Next reference number from existing APP-#### values.
+    const maxRef = applications.reduce((m, a) => {
+      const n = Number(a.reference.replace(/\D/g, ""));
+      return Number.isFinite(n) ? Math.max(m, n) : m;
+    }, 2041);
+    const nextRef = maxRef + 1;
+    const id = `app_${nextRef}`;
+
+    const applicantId = `appl_${nextRef}`;
+    applicants.push({
+      id: applicantId,
+      fullName: input.applicant.fullName,
+      email: input.applicant.email,
+      phone: input.applicant.phone,
+      dateOfBirth: input.applicant.dateOfBirth,
+      currentAddress: input.currentAddress,
+      employer: input.employer,
+      position: input.position,
+      grossMonthlyIncome: input.monthlyIncomeMinor
+        ? { amountMinor: input.monthlyIncomeMinor, currency: "PHP" }
+        : undefined,
+      createdAt: now,
+    });
+
+    const application: Application = {
+      id,
+      reference: `APP-${nextRef}`,
+      unitId: input.unitId,
+      primaryApplicantId: applicantId,
+      status: "new",
+      desiredMoveIn: input.desiredMoveIn,
+      leaseTermMonths: input.leaseTermMonths,
+      monthlyIncome: input.monthlyIncomeMinor
+        ? { amountMinor: input.monthlyIncomeMinor, currency: "PHP" }
+        : undefined,
+      consentGivenAt: input.consent ? now : undefined,
+      signatureName: input.signatureName,
+      feeStatus: input.feePaid ? "paid" : "pending",
+      submittedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    applications.push(application);
+
+    parties.push({
+      id: `party_${nextRef}`,
+      applicationId: id,
+      applicantId,
+      role: "primary",
+      completed: true,
+    });
+
+    (input.documentsUploaded ?? []).forEach((t, i) => {
+      const doc: ApplicationDocument = {
+        id: `doc_${nextRef}_${i}`,
+        applicationId: id,
+        type: t as DocumentType,
+        label: t,
+        status: "uploaded",
+        uploadedAt: now,
+      };
+      documents.push(doc);
+    });
+
+    return application;
   },
 
   async getApplication(id: string): Promise<ApplicationDetail | null> {
