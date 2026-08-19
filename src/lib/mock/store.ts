@@ -205,13 +205,15 @@ export const mockStore: DataStore = {
       completed: true,
     });
 
-    (input.documentsUploaded ?? []).forEach((t, i) => {
+    (input.documentsUploaded ?? []).forEach((d, i) => {
       const doc: ApplicationDocument = {
         id: `doc_${nextRef}_${i}`,
         applicationId: id,
-        type: t as DocumentType,
-        label: t,
+        type: d.type as DocumentType,
+        label: d.label ?? d.type,
         status: "uploaded",
+        assetRef: d.assetRef,
+        fileName: d.fileName,
         uploadedAt: now,
       };
       documents.push(doc);
@@ -461,7 +463,7 @@ export const mockStore: DataStore = {
     return msg;
   },
 
-  async fulfillDocumentRequest(reference, requestId): Promise<DocumentRequest | null> {
+  async fulfillDocumentRequest(reference, requestId, asset): Promise<DocumentRequest | null> {
     const app = applications.find((a) => a.reference === reference);
     if (!app) return null;
     const req = documentRequests.find((r) => r.id === requestId && r.applicationId === app.id);
@@ -474,6 +476,8 @@ export const mockStore: DataStore = {
       type: req.docType,
       label: req.label,
       status: "uploaded",
+      assetRef: asset?.assetRef,
+      fileName: asset?.fileName,
       uploadedAt: req.fulfilledAt,
     });
     // If no more open requests, move an incomplete application forward.

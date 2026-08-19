@@ -10,6 +10,8 @@ import { Icon } from "@/components/ui/Icon";
 import { Stamp } from "@/components/ui/Stamp";
 import { useSession } from "@/lib/client/session";
 import { useToast } from "@/lib/client/toast";
+import { DocUploadButton } from "@/components/applicant/DocUploadButton";
+import type { UploadedAsset } from "@/lib/client/upload";
 
 const APPLICATION_FEE = money(100000); // ₱1,000
 
@@ -21,6 +23,11 @@ const DOCS = [
 ] as const;
 
 type DocKey = (typeof DOCS)[number]["key"];
+
+interface DocState { uploaded: boolean; assetRef?: string; fileName?: string }
+
+// Map wizard doc keys → data-contract DocumentType values.
+const DOC_TYPE: Record<DocKey, string> = { gov_id: "gov_id", payslip: "payslip", payslip2: "payslip", income: "income_proof" };
 
 interface Party {
   id: string;
@@ -45,7 +52,7 @@ interface Draft {
   employmentLength: string;
   grossIncome: string;
   additionalIncome: string;
-  documents: Record<DocKey, boolean>;
+  documents: Record<DocKey, DocState>;
   occupants: string;
   pets: string;
   parties: Party[];
@@ -58,7 +65,7 @@ const EMPTY_DRAFT: Draft = {
   firstName: "", lastName: "", email: "", phone: "", dob: "",
   currentAddress: "", city: "", yearsAtAddress: "1–2 years", housingCost: "", reasonMoving: "", landlordContact: "",
   employer: "", position: "", employmentLength: "1–3 years", grossIncome: "", additionalIncome: "",
-  documents: { gov_id: false, payslip: false, payslip2: false, income: false },
+  documents: { gov_id: { uploaded: false }, payslip: { uploaded: false }, payslip2: { uploaded: false }, income: { uploaded: false } },
   occupants: "1", pets: "", parties: [],
   consent: false, signature: "", feePaid: false,
 };
@@ -150,7 +157,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
       if (!nonEmpty(draft.employer)) e.employer = "Required";
       if (!nonEmpty(draft.grossIncome)) e.grossIncome = "Required";
     } else if (s === 4) {
-      const missing = DOCS.filter((d) => d.required && !draft.documents[d.key]);
+      const missing = DOCS.filter((d) => d.required && !draft.documents[d.key].uploaded);
       if (missing.length) e.documents = `Please upload: ${missing.map((m) => m.label).join(", ")}`;
     }
     setErrors(e);
@@ -163,14 +170,10 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function uploadDoc(key: DocKey) {
-    set("documents", { ...draft.documents, [key]: true });
-    toast("Document uploaded");
+  function onDocUploaded(key: DocKey, asset: UploadedAsset) {
+    set("documents", { ...draft.documents, [key]: { uploaded: true, assetRef: asset.url, fileName: asset.fileName } });
   }
-  function uploadNextPending() {
-    const next = DOCS.find((d) => !draft.documents[d.key]);
-    if (next) uploadDoc(next.key);
-  }
+  const nextPendingKey = (): DocKey | undefined => DOCS.find((d) => !draft.documents[d.key].uploaded)?.key;
 
   function inviteParty(email: string, role: Party["role"]) {
     if (!isEmail(email)) return toast("Enter a valid email to invite");
@@ -201,7 +204,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
           leaseTermMonths: 12,
           occupants: Number(draft.occupants),
           pets: draft.pets,
-          documentsUploaded: DOCS.filter((d) => draft.documents[d.key]).map((d) => d.key),
+          documentsUploaded: DOCS.filter((d) => draft.documents[d.key].uploaded).map((d) => ({ type: DOC_TYPE[d.key], label: d.label, assetRef: draft.documents[d.key].assetRef, fileName: draft.documents[d.key].fileName })),
           consent: draft.consent,
           signatureName: draft.signature,
           feePaid: draft.feePaid,
@@ -351,27 +354,32 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
           <section className="step-panel">
             <span className="eyebrow">Step 04 · Documents & household</span>
             <h1 className="step-title">Proof & who's moving in</h1>
-            <p className="step-sub">{DOCS.filter((d) => draft.documents[d.key]).length} of {DOCS.length} documents uploaded</p>
+            <p className="step-sub">{DOCS.filter((d) => draft.documents[d.key].uploaded).length} of {DOCS.length} documents uploaded</p>
             <div className="card app-form-card">
-              <div className="upload-zone" role="button" tabIndex={0} onClick={uploadNextPending} onKeyDown={(e) => e.key === "Enter" && uploadNextPending()}>
+              <div className="upload-zone">
                 <div className="ic"><Icon name="upload" size={26} /></div>
-                <div style={{ fontWeight: 600 }}>Tap to upload or take a photo</div>
-                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>PDF, JPG, PNG or HEIC · up to 10 MB each</div>
+                <div style={{ fontWeight: 600 }}>Upload a document or take a photo</div>
+                <div className="muted" style={{ fontSize: 13, margin: "4px 0 12px" }}>PDF, JPG, PNG or HEIC · up to 10 MB each</div>
+                {nextPendingKey() ? (
+                  <DocUploadButton label={`Upload ${DOCS.find((d) => d.key === nextPendingKey())?.label}`} variant="accent" folder="rental-depot/applications" onUploaded={(a) => onDocUploaded(nextPendingKey()!, a)} />
+                ) : (
+                  <span className="pill accent"><Icon name="check" size={13} /> All documents uploaded</span>
+                )}
               </div>
 
               <ul className="doc-list">
                 {DOCS.map((d) => {
-                  const done = draft.documents[d.key];
+                  const done = draft.documents[d.key].uploaded;
                   return (
                     <li key={d.key} className={`doc-item ${done ? "done" : ""}`}>
                       <span className="di-ic"><Icon name={done ? "check" : "file"} size={16} /></span>
                       <div>
                         <div className="di-name">{d.label}{!d.required && <span className="muted" style={{ fontWeight: 400 }}> (optional)</span>}</div>
-                        <div className="di-meta">{done ? "Uploaded" : "Not uploaded yet"}</div>
+                        <div className="di-meta">{done ? draft.documents[d.key].fileName ?? "Uploaded" : "Not uploaded yet"}</div>
                       </div>
                       <span className="di-status">
                         {done ? <Stamp variant="approved">Uploaded</Stamp> : (
-                          <Button variant="ghost" size="sm" onClick={() => uploadDoc(d.key)}><Icon name="upload" size={14} /> Upload</Button>
+                          <DocUploadButton folder="rental-depot/applications" onUploaded={(a) => onDocUploaded(d.key, a)} />
                         )}
                       </span>
                     </li>
@@ -415,7 +423,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
               ["Employment", draft.employmentLength],
             ]} />
             <ReviewBlock title="Documents & household" onEdit={() => goTo(4)} rows={[
-              ["Documents", `${DOCS.filter((d) => draft.documents[d.key]).length} uploaded`],
+              ["Documents", `${DOCS.filter((d) => draft.documents[d.key].uploaded).length} uploaded`],
               ["Occupants", draft.occupants],
               ["Co-applicants / guarantors", draft.parties.length ? `${draft.parties.length} invited` : "None"],
               ["Pets", draft.pets || "None"],

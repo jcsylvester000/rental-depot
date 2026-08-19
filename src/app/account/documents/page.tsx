@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { AccountShell } from "@/components/layout/AccountShell";
-import { Button, LinkButton } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Stamp } from "@/components/ui/Stamp";
 import { useSession } from "@/lib/client/session";
-import { useToast } from "@/lib/client/toast";
+import { DocUploadButton } from "@/components/applicant/DocUploadButton";
 
 const LOCKER = [
   { type: "gov_id", label: "Government ID", note: "Passport, driver's license, or national ID" },
@@ -14,10 +14,29 @@ const LOCKER = [
   { type: "income_proof", label: "Proof of income", note: "Bank statement or income letter" },
 ];
 
+const KEY = "rd.locker";
+
 export default function DocumentsPage() {
   const { user, ready } = useSession();
-  const { toast } = useToast();
   const [uploaded, setUploaded] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setUploaded(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function saveDoc(type: string, fileName: string) {
+    setUploaded((u) => {
+      const next = { ...u, [type]: fileName };
+      try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }
 
   if (ready && !user) {
     return (
@@ -29,12 +48,6 @@ export default function DocumentsPage() {
         </div>
       </AccountShell>
     );
-  }
-
-  function fakeUpload(type: string, label: string) {
-    // Cloudinary upload is wired in Phase 7; this simulates a stored asset.
-    setUploaded((u) => ({ ...u, [type]: `${label.toLowerCase().replace(/\s+/g, "-")}.pdf` }));
-    toast(`${label} added to your locker`);
   }
 
   return (
@@ -58,16 +71,14 @@ export default function DocumentsPage() {
             {file ? (
               <Stamp variant="approved">Saved</Stamp>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => fakeUpload(d.type, d.label)}>
-                <Icon name="upload" size={15} /> Upload
-              </Button>
+              <DocUploadButton folder="rental-depot/locker" onUploaded={(a) => saveDoc(d.type, a.fileName)} />
             )}
           </div>
         );
       })}
 
       <p className="muted" style={{ fontSize: 12.5, marginTop: 16 }}>
-        Accepted formats: PDF, JPG, PNG, HEIC · up to 10 MB each. Secure upload is finalized in a later phase.
+        Accepted formats: PDF, JPG, PNG, HEIC · up to 10 MB each. Files are stored securely on Cloudinary.
       </p>
     </AccountShell>
   );

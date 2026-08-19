@@ -10,6 +10,8 @@ import { StatusStamp } from "@/components/ui/Stamp";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/lib/client/toast";
+import { DocUploadButton } from "@/components/applicant/DocUploadButton";
+import type { UploadedAsset } from "@/lib/client/upload";
 
 export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
   const { toast } = useToast();
@@ -32,9 +34,10 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
     if (j.ok) setMessages((m) => [...m, j.data]);
   }
 
-  async function resubmit(req: DocumentRequest) {
+  async function resubmit(req: DocumentRequest, asset: UploadedAsset) {
     const res = await fetch(`/api/v1/applications/${ref}/documents`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: req.id }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId: req.id, assetRef: asset.url, fileName: asset.fileName }),
     });
     const j = await res.json();
     if (j.ok) {
@@ -89,7 +92,7 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
                   <div style={{ fontWeight: 600 }}>{r.label}</div>
                   <div style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 3 }}>{r.reason}</div>
                 </div>
-                <Button variant="accent" size="sm" onClick={() => resubmit(r)}><Icon name="upload" size={14} /> Upload</Button>
+                <DocUploadButton variant="accent" folder={`rental-depot/${ref}`} onUploaded={(a) => resubmit(r, a)} />
               </div>
             </div>
           ))}

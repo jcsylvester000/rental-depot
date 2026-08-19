@@ -49,6 +49,13 @@ export interface ApplicationListFilter {
   sort?: "newest" | "oldest" | "completeness" | "score";
 }
 
+export interface UploadedDocInput {
+  type: string;
+  label?: string;
+  assetRef?: string;
+  fileName?: string;
+}
+
 export interface CreateApplicationInput {
   unitId: string;
   applicant: { fullName: string; email: string; phone: string; dateOfBirth?: string };
@@ -60,7 +67,7 @@ export interface CreateApplicationInput {
   leaseTermMonths?: number;
   occupants?: number;
   pets?: string;
-  documentsUploaded?: string[]; // document type keys marked uploaded
+  documentsUploaded?: UploadedDocInput[];
   consent: boolean;
   signatureName: string;
   feePaid: boolean;
@@ -82,7 +89,7 @@ export interface DataStore {
   // Post-submission (Phase 3)
   listTracking(email?: string): Promise<ApplicationTracking[]>;
   addMessage(reference: string, body: string, from?: "applicant" | "operator"): Promise<Message | null>;
-  fulfillDocumentRequest(reference: string, requestId: string): Promise<DocumentRequest | null>;
+  fulfillDocumentRequest(reference: string, requestId: string, asset?: { assetRef?: string; fileName?: string }): Promise<DocumentRequest | null>;
   signLease(reference: string, payDeposit?: boolean): Promise<Lease | null>;
 
   // Operator (Phase 4)

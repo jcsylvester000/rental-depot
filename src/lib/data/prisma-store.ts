@@ -197,7 +197,7 @@ export const prismaStore: DataStore = {
 
     await prisma.applicationParty.create({ data: { id: `party_${nextRef}`, applicationId: app.id, applicantId, role: "primary", completed: true } });
     if (input.documentsUploaded?.length) {
-      await prisma.document.createMany({ data: input.documentsUploaded.map((t, i) => ({ id: `doc_${nextRef}_${i}`, applicationId: app.id, type: t as any, label: t, status: "uploaded" as const, uploadedAt: now })) });
+      await prisma.document.createMany({ data: input.documentsUploaded.map((d, i) => ({ id: `doc_${nextRef}_${i}`, applicationId: app.id, type: d.type as any, label: d.label ?? d.type, status: "uploaded" as const, assetRef: d.assetRef, fileName: d.fileName, uploadedAt: now })) });
     }
     return mapApplication(app);
   },
@@ -222,14 +222,14 @@ export const prismaStore: DataStore = {
     return mapMessage(m);
   },
 
-  async fulfillDocumentRequest(reference, requestId): Promise<DocumentRequest | null> {
+  async fulfillDocumentRequest(reference, requestId, asset): Promise<DocumentRequest | null> {
     const app = await prisma.application.findUnique({ where: { reference }, select: { id: true, status: true } });
     if (!app) return null;
     const req = await prisma.documentRequest.findFirst({ where: { id: requestId, applicationId: app.id } });
     if (!req) return null;
     const now = new Date();
     const updated = await prisma.documentRequest.update({ where: { id: req.id }, data: { status: "fulfilled", fulfilledAt: now } });
-    await prisma.document.create({ data: { id: `doc_${req.id}`, applicationId: app.id, type: req.docType, label: req.label, status: "uploaded", uploadedAt: now } });
+    await prisma.document.create({ data: { id: `doc_${req.id}`, applicationId: app.id, type: req.docType, label: req.label, status: "uploaded", assetRef: asset?.assetRef, fileName: asset?.fileName, uploadedAt: now } });
     const stillOpen = await prisma.documentRequest.count({ where: { applicationId: app.id, status: "open" } });
     if (stillOpen === 0 && app.status === "incomplete") await prisma.application.update({ where: { id: app.id }, data: { status: "complete", updatedAt: now } });
     return mapDocReq(updated);

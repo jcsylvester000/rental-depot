@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest, { params }: { params: Promise<{ ref: string }> }) {
   try {
     const { ref } = await params;
-    const { requestId } = (await req.json()) as { requestId?: string };
+    const { requestId, assetRef, fileName } = (await req.json()) as { requestId?: string; assetRef?: string; fileName?: string };
     if (!requestId) return badRequest("requestId is required");
     const store = await getStore();
-    const result = await store.fulfillDocumentRequest(decodeURIComponent(ref), requestId);
+    const result = await store.fulfillDocumentRequest(decodeURIComponent(ref), requestId, { assetRef, fileName });
     if (!result) return notFound("Request not found");
     return ok(result);
   } catch {

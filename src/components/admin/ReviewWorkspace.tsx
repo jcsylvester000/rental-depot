@@ -153,12 +153,24 @@ export function ReviewWorkspace({ initial }: { initial: ApplicationDetail }) {
           <div className="block-body">
             {initial.documents.length ? (
               <div className="doc-viewer">
-                {initial.documents.map((d) => (
-                  <div key={d.id} className="doc-thumb" onClick={() => toast("Opening document viewer")}>
-                    <div className="dt-ph"><Icon name="file" size={26} /></div>
-                    <div className="dt-name">{d.label}</div>
-                  </div>
-                ))}
+                {initial.documents.map((d) => {
+                  const isImg = !!d.assetRef && /\.(jpe?g|png|webp|gif|heic|heif)(\?|$)/i.test(d.assetRef);
+                  if (d.assetRef) {
+                    return (
+                      <a key={d.id} className="doc-thumb" href={d.assetRef} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <div className="dt-ph">{isImg ? <img src={d.assetRef} alt={d.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Icon name="file" size={26} />}</div>
+                        <div className="dt-name">{d.label}</div>
+                      </a>
+                    );
+                  }
+                  return (
+                    <div key={d.id} className="doc-thumb" onClick={() => toast("No file attached (seeded record)")}>
+                      <div className="dt-ph"><Icon name="file" size={26} /></div>
+                      <div className="dt-name">{d.label}</div>
+                    </div>
+                  );
+                })}
               </div>
             ) : <p className="muted" style={{ fontSize: 14, margin: 0 }}>No documents uploaded yet.</p>}
           </div>
