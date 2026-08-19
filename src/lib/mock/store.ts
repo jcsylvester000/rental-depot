@@ -12,6 +12,8 @@ import type {
   UnitListFilter,
   ApplicationListFilter,
   CreateApplicationInput,
+  AdminQueueFilter,
+  DecisionInput,
 } from "@/lib/data/store";
 import type {
   Unit,
@@ -19,11 +21,16 @@ import type {
   Application,
   ApplicationDetail,
   ApplicationTracking,
+  AdminQueueRow,
+  AnalyticsSummary,
   ApplicationDocument,
   DocumentType,
   Message,
   DocumentRequest,
   Lease,
+  Decision,
+  OperatorNote,
+  ScreeningResult,
 } from "@/lib/types";
 import {
   units,
@@ -39,7 +46,16 @@ import {
   documentRequests,
   leases,
   payments,
+  operatorNotes,
 } from "@/lib/mock/seed";
+
+const REQUIRED_DOC_TYPES: DocumentType[] = ["gov_id", "payslip", "income_proof"];
+
+function completenessOf(appId: string, feePaid: boolean, consent: boolean): number {
+  const uploaded = new Set(documents.filter((d) => d.applicationId === appId).map((d) => d.type));
+  const docPct = (REQUIRED_DOC_TYPES.filter((t) => uploaded.has(t)).length / REQUIRED_DOC_TYPES.length) * 60;
+  return Math.round(docPct + (consent ? 20 : 0) + (feePaid ? 20 : 0));
+}
 
 function locationOf(u: Unit): { city: string; region: string } {
   const p = properties.find((x) => x.id === u.propertyId);
@@ -96,6 +112,10 @@ export const mockStore: DataStore = {
 
   async getProperty(id: string) {
     return properties.find((p) => p.id === id) ?? null;
+  },
+
+  async listProperties() {
+    return [...properties];
   },
 
   async listApplications(filter?: ApplicationListFilter): Promise<Application[]> {
@@ -213,7 +233,185 @@ export const mockStore: DataStore = {
       documentRequests: documentRequests.filter((r) => r.applicationId === app.id),
       lease: leases.find((l) => l.applicationId === app.id),
       payments: payments.filter((p) => p.applicationId === app.id || (leases.find((l) => l.applicationId === app.id)?.id === p.leaseId)),
+      notes: operatorNotes
+        .filter((n) => n.applicationId === app.id)
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
     };
+  },
+
+  async listAdminQueue(filter?: AdminQueueFilter): Promise<AdminQueueRow[]> {
+    let rows: AdminQueueRow[] = applications.map((a) => {
+      const applicant = applicants.find((p) => p.id === a.primaryApplicantId);
+      const unit = units.find((u) => u.id === a.unitId);
+      const screening = screeningResults.find((s) => s.applicationId === a.id);
+      const openReq = documentRequests.some((r) => r.applicationId === a.id && r.status === "open");
+      const completeness = completenessOf(a.id, a.feeStatus === "paid", !!a.consentGivenAt);
+      const flags: string[] = [];
+      if (screening?.evictionOutcome === "fail" || screening?.evictionOutcome === "flag") flags.push("eviction");
+      if (screening?.backgroundOutcome === "fail" || screening?.backgroundOutcome === "flag") flags.push("background");
+      if (unit && screening?.incomeToRent != null && screening.incomeToRent < unit.incomeMultiple) flags.push("income_low");
+      if (openReq || a.status === "incomplete") flags.push("incomplete");
+      return {
+        id: a.id,
+        reference: a.reference,
+        applicantName: applicant?.fullName ?? "—",
+        applicantEmail: applicant?.email ?? "",
+        unitId: a.unitId,
+        unitCode: unit?.code ?? "",
+        unitTitle: unit?.title ?? "",
+        status: a.status,
+        submittedAt: a.submittedAt,
+        completenessPct: completeness,
+        score: a.rubric?.overall,
+        incomeToRent: screening?.incomeToRent,
+        creditScore: screening?.creditScore,
+        flags,
+      };
+    });
+
+    if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+    if (filter?.unitId) rows = rows.filter((r) => r.unitId === filter.unitId);
+    if (filter?.onlyIncomplete) rows = rows.filter((r) => r.flags.includes("incomplete"));
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      rows = rows.filter((r) =>
+        r.reference.toLowerCase().includes(q) ||
+        r.applicantName.toLowerCase().includes(q) ||
+        r.applicantEmail.toLowerCase().includes(q) ||
+        r.unitCode.toLowerCase().includes(q),
+      );
+    }
+    if (filter?.sort === "oldest") rows.sort((a, b) => (a.submittedAt ?? "") < (b.submittedAt ?? "") ? -1 : 1);
+    else if (filter?.sort === "score") rows.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    else if (filter?.sort === "completeness") rows.sort((a, b) => b.completenessPct - a.completenessPct);
+    else rows.sort((a, b) => ((a.submittedAt ?? "") < (b.submittedAt ?? "") ? 1 : -1));
+
+    return rows;
+  },
+
+  async getAnalytics(propertyId?: string): Promise<AnalyticsSummary> {
+    const scopedUnitIds = propertyId ? new Set(units.filter((u) => u.propertyId === propertyId).map((u) => u.id)) : null;
+    const scopedUnits = scopedUnitIds ? units.filter((u) => scopedUnitIds.has(u.id)) : units;
+    const apps = scopedUnitIds ? applications.filter((a) => scopedUnitIds.has(a.unitId)) : applications;
+    const scopedLeases = scopedUnitIds ? leases.filter((l) => scopedUnitIds.has(l.unitId)) : leases;
+
+    const applicationsCount = apps.length;
+    const approvals = apps.filter((a) => a.status === "approved" || a.status === "conditional").length;
+    const leasesCount = scopedLeases.length;
+    // Views are not tracked in the mock; approximate for the funnel demo.
+    const views = applicationsCount * 9 + 40;
+
+    const decided = decisions.map((d) => {
+      const app = apps.find((a) => a.id === d.applicationId);
+      if (!app?.submittedAt) return null;
+      return (new Date(d.decidedAt).getTime() - new Date(app.submittedAt).getTime()) / 36e5;
+    }).filter((x): x is number => x != null);
+    const avgTimeToDecisionHours = decided.length ? Math.round(decided.reduce((a, b) => a + b, 0) / decided.length) : 0;
+
+    const statuses = ["new", "incomplete", "screening", "complete", "approved", "conditional", "declined"] as const;
+    const byStatus = statuses.map((status) => ({ status, count: apps.filter((a) => a.status === status).length }));
+
+    return {
+      funnel: { views, applications: applicationsCount, approvals, leases: leasesCount },
+      avgTimeToDecisionHours,
+      byStatus,
+      vacancy: {
+        total: scopedUnits.length,
+        vacant: scopedUnits.filter((u) => u.status === "vacant").length,
+        pending: scopedUnits.filter((u) => u.status === "pending").length,
+        occupied: scopedUnits.filter((u) => u.status === "occupied").length,
+      },
+    };
+  },
+
+  async decide(reference: string, input: DecisionInput): Promise<Decision | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    const now = new Date().toISOString();
+    const screening = screeningResults.find((s) => s.applicationId === app.id);
+    const decision: Decision = {
+      id: `dec_${app.reference}`,
+      applicationId: app.id,
+      outcome: input.outcome,
+      reasonCode: input.reasonCode,
+      reasonText: input.reasonText,
+      decidedByUserId: input.byUserId ?? "user_pm",
+      adverseActionIssued: input.outcome === "decline" && !!screening,
+      decidedAt: now,
+    };
+    const existingIdx = decisions.findIndex((d) => d.applicationId === app.id);
+    if (existingIdx >= 0) decisions[existingIdx] = decision;
+    else decisions.push(decision);
+
+    app.status = input.outcome === "approve" ? "approved" : input.outcome === "conditional" ? "conditional" : "declined";
+    app.updatedAt = now;
+
+    // Approve → generate a lease and notify the applicant.
+    if (input.outcome === "approve" && !leases.find((l) => l.applicationId === app.id)) {
+      const unit = units.find((u) => u.id === app.unitId)!;
+      leases.push({
+        id: `lease_${app.reference}`, applicationId: app.id, unitId: app.unitId, termMonths: app.leaseTermMonths ?? 12,
+        rent: unit.rent, deposit: unit.deposit, startDate: app.desiredMoveIn ?? unit.availableFrom,
+        signedByApplicant: false, signedByOperator: true, createdAt: now,
+      });
+    }
+    messages.push({
+      id: `msg_${app.reference}_dec`, applicationId: app.id, from: "operator", authorName: "Property Manager",
+      body: input.outcome === "approve" ? "Great news — your application is approved. Your lease is ready to sign."
+        : input.outcome === "conditional" ? "You've been approved with a condition. Please review the details."
+        : "Thank you for applying. Unfortunately we can't proceed with this application.",
+      createdAt: now,
+    });
+    return decision;
+  },
+
+  async addNote(reference: string, body: string, authorName = "Property Manager"): Promise<OperatorNote | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app || !body.trim()) return null;
+    const note: OperatorNote = {
+      id: `note_${app.reference}_${operatorNotes.filter((n) => n.applicationId === app.id).length + 1}`,
+      applicationId: app.id, authorName, body: body.trim(), createdAt: new Date().toISOString(),
+    };
+    operatorNotes.push(note);
+    return note;
+  },
+
+  async requestDocument(reference, docType, label, reason): Promise<DocumentRequest | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    const now = new Date().toISOString();
+    const req: DocumentRequest = {
+      id: `req_${app.reference}_${documentRequests.filter((r) => r.applicationId === app.id).length + 1}`,
+      applicationId: app.id, docType: docType as DocumentType, label, reason, status: "open", createdAt: now,
+    };
+    documentRequests.push(req);
+    app.status = "incomplete";
+    app.updatedAt = now;
+    messages.push({ id: `msg_${req.id}`, applicationId: app.id, from: "operator", authorName: "Property Manager", body: `We've requested a document: ${label}. ${reason}`, createdAt: now });
+    return req;
+  },
+
+  async rerunScreening(reference: string): Promise<ScreeningResult | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    const unit = units.find((u) => u.id === app.unitId);
+    const now = new Date().toISOString();
+    const incomeMinor = app.monthlyIncome?.amountMinor ?? 0;
+    const ratio = unit && unit.rent.amountMinor > 0 ? Math.round((incomeMinor / unit.rent.amountMinor) * 10) / 10 : 0;
+    const passIncome = unit ? ratio >= unit.incomeMultiple : true;
+    const result: ScreeningResult = {
+      id: `scr_${app.reference}`, applicationId: app.id,
+      creditScore: 700 + (incomeMinor % 60), creditOutcome: "pass",
+      incomeToRent: ratio, incomeOutcome: passIncome ? "pass" : "flag",
+      backgroundOutcome: "pass", evictionOutcome: "pass",
+      providerRef: `SCR-EXT-${app.reference}`, completedAt: now,
+    };
+    const idx = screeningResults.findIndex((s) => s.applicationId === app.id);
+    if (idx >= 0) screeningResults[idx] = result;
+    else screeningResults.push(result);
+    if (app.status === "new" || app.status === "screening") app.status = "complete";
+    app.updatedAt = now;
+    return result;
   },
 
   async listTracking(email?: string): Promise<ApplicationTracking[]> {

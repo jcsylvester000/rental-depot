@@ -284,6 +284,14 @@ export interface DocumentRequest {
   fulfilledAt?: ISODateString;
 }
 
+export interface OperatorNote {
+  id: ID;
+  applicationId: ID;
+  authorName: string;
+  body: string;
+  createdAt: ISODateString;
+}
+
 export interface AuditLogEntry {
   id: ID;
   actorType: "applicant" | "operator" | "system";
@@ -328,6 +336,33 @@ export interface ApplicationDetail extends Application {
   documentRequests: DocumentRequest[];
   lease?: Lease;
   payments: Payment[];
+  notes: OperatorNote[];
+}
+
+/** A row in the operator application queue. */
+export interface AdminQueueRow {
+  id: ID;
+  reference: string;
+  applicantName: string;
+  applicantEmail: string;
+  unitId: ID;
+  unitCode: string;
+  unitTitle: string;
+  status: ApplicationStatus;
+  submittedAt?: ISODateString;
+  completenessPct: number;
+  score?: number;
+  incomeToRent?: number;
+  creditScore?: number;
+  flags: string[]; // lawful flags only (e.g. "eviction", "income_low")
+}
+
+/** Operator analytics rollup. */
+export interface AnalyticsSummary {
+  funnel: { views: number; applications: number; approvals: number; leases: number };
+  avgTimeToDecisionHours: number;
+  byStatus: { status: ApplicationStatus; count: number }[];
+  vacancy: { total: number; vacant: number; pending: number; occupied: number };
 }
 
 /** A compact tracking card for the applicant's status list. */

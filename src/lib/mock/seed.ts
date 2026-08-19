@@ -23,6 +23,7 @@ import type {
   DocumentRequest,
   Lease,
   Payment,
+  OperatorNote,
 } from "@/lib/types";
 
 export const owners: Owner[] = [
@@ -353,4 +354,8 @@ export const payments: Payment[] = [
   { id: "pay_2041_fee", type: "application_fee", status: "paid", amount: money(100000), applicationId: "app_2041", paidAt: "2026-08-18T05:00:00.000Z", createdAt: "2026-08-18T05:00:00.000Z" },
   { id: "pay_2039_fee", type: "application_fee", status: "paid", amount: money(100000), applicationId: "app_2039", paidAt: "2026-08-14T05:00:00.000Z", createdAt: "2026-08-14T05:00:00.000Z" },
   { id: "pay_2039_deposit", type: "deposit", status: "pending", amount: money(7000000), leaseId: "lease_2039", createdAt: "2026-08-18T02:05:00.000Z" },
+];
+
+export const operatorNotes: OperatorNote[] = [
+  { id: "note_2041_1", applicationId: "app_2041", authorName: "Property Manager", body: "Strong file — screening clean, income comfortably above threshold.", createdAt: "2026-08-18T08:10:00.000Z" },
 ];

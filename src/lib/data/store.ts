@@ -10,6 +10,8 @@ import type {
   Application,
   ApplicationDetail,
   ApplicationTracking,
+  AdminQueueRow,
+  AnalyticsSummary,
   Property,
   Unit,
   UnitSummary,
@@ -19,6 +21,10 @@ import type {
   Message,
   DocumentRequest,
   Lease,
+  Decision,
+  DecisionOutcome,
+  OperatorNote,
+  ScreeningResult,
 } from "@/lib/types";
 
 export interface UnitListFilter {
@@ -62,6 +68,7 @@ export interface DataStore {
   listUnits(filter?: UnitListFilter): Promise<UnitSummary[]>;
   getUnit(id: string): Promise<Unit | null>;
   getProperty(id: string): Promise<Property | null>;
+  listProperties(): Promise<Property[]>;
 
   // Applications
   listApplications(filter?: ApplicationListFilter): Promise<Application[]>;
@@ -74,6 +81,29 @@ export interface DataStore {
   addMessage(reference: string, body: string, from?: "applicant" | "operator"): Promise<Message | null>;
   fulfillDocumentRequest(reference: string, requestId: string): Promise<DocumentRequest | null>;
   signLease(reference: string, payDeposit?: boolean): Promise<Lease | null>;
+
+  // Operator (Phase 4)
+  listAdminQueue(filter?: AdminQueueFilter): Promise<AdminQueueRow[]>;
+  getAnalytics(propertyId?: string): Promise<AnalyticsSummary>;
+  decide(reference: string, input: DecisionInput): Promise<Decision | null>;
+  addNote(reference: string, body: string, authorName?: string): Promise<OperatorNote | null>;
+  requestDocument(reference: string, docType: string, label: string, reason: string): Promise<DocumentRequest | null>;
+  rerunScreening(reference: string): Promise<ScreeningResult | null>;
+}
+
+export interface AdminQueueFilter {
+  status?: ApplicationStatus;
+  unitId?: string;
+  search?: string;
+  onlyIncomplete?: boolean;
+  sort?: "newest" | "oldest" | "score" | "completeness";
+}
+
+export interface DecisionInput {
+  outcome: DecisionOutcome;
+  reasonCode: string;
+  reasonText?: string;
+  byUserId?: string;
 }
 
 /**
