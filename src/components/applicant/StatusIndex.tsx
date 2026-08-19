@@ -66,7 +66,7 @@ export function StatusIndex() {
         <div className="card empty-state">
           <h3>No applications yet</h3>
           <p>When you apply for a home it will appear here.</p>
-          <LinkButton href="/listings" variant="primary" style={{ marginTop: 14 }}>Find a home</LinkButton>
+          <LinkButton href="/listings" variant="primary" style={{ marginTop: 14 }}>Find a property</LinkButton>
         </div>
       ) : (
         list.map((t) => (

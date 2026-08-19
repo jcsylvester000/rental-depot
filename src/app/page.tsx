@@ -37,7 +37,7 @@ export default async function HomePage() {
               </p>
               <div className="hero-cta">
                 <LinkButton href="/listings" variant="primary" size="lg">
-                  Find a home <Icon name="arrowRight" />
+                  Find a property <Icon name="arrowRight" />
                 </LinkButton>
                 <LinkButton href="/listings?class=commercial" variant="accent" size="lg">
                   Lease a space <Icon name="arrowRight" />

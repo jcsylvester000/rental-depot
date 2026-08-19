@@ -18,7 +18,7 @@ export function PublicFooter() {
           </div>
           <div>
             <h5>Renters</h5>
-            <Link href="/listings">Find a home</Link>
+            <Link href="/listings">Find a property</Link>
             <Link href="/status">Track application</Link>
             <Link href="/account/login">Sign in</Link>
           </div>
