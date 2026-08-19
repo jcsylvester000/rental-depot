@@ -4,6 +4,18 @@ import { getStore, type CreateApplicationInput } from "@/lib/data/store";
 
 export const dynamic = "force-dynamic";
 
+/** GET /api/v1/applications?email=… — tracking list (optionally for one applicant). */
+export async function GET(req: NextRequest) {
+  try {
+    const email = req.nextUrl.searchParams.get("email") ?? undefined;
+    const store = await getStore();
+    const list = await store.listTracking(email);
+    return ok(list, { total: list.length });
+  } catch {
+    return serverError("Failed to list applications");
+  }
+}
+
 /** POST /api/v1/applications — submit an application. */
 export async function POST(req: NextRequest) {
   try {

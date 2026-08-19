@@ -22,7 +22,7 @@ export default async function ListingsPage({
   return (
     <>
       <PublicHeader active="/listings" />
-      <div className="wrap">
+      <div className="wrap" id="main">
         <div style={{ paddingTop: 28 }}>
           <span className="eyebrow">Find a home</span>
           <h1 style={{ fontSize: "clamp(28px,4vw,40px)", marginTop: 8 }}>Available homes</h1>

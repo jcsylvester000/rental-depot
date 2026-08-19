@@ -33,7 +33,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   return (
     <>
       <PublicHeader active="/listings" />
-      <div className="wrap">
+      <div className="wrap" id="main">
         <div style={{ paddingTop: 20 }}>
           <LinkButton href="/listings" variant="quiet" size="sm">
             <Icon name="arrowLeft" size={15} /> Back to listings

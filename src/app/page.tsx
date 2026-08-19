@@ -14,7 +14,7 @@ export default async function HomePage() {
       <PublicHeader active="/" />
 
       {/* HERO */}
-      <section className="hero">
+      <section className="hero" id="main">
         <div className="wrap">
           <span className="eyebrow">Rental applications, kept in good order</span>
           <h1 style={{ marginTop: 16 }}>Find a home, apply in minutes, know exactly where you stand.</h1>

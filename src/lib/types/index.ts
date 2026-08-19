@@ -264,6 +264,26 @@ export interface User {
   createdAt: ISODateString;
 }
 
+export interface Message {
+  id: ID;
+  applicationId: ID;
+  from: "applicant" | "operator" | "system";
+  authorName?: string;
+  body: string;
+  createdAt: ISODateString;
+}
+
+export interface DocumentRequest {
+  id: ID;
+  applicationId: ID;
+  docType: DocumentType;
+  label: string;
+  reason: string;
+  status: "open" | "fulfilled";
+  createdAt: ISODateString;
+  fulfilledAt?: ISODateString;
+}
+
 export interface AuditLogEntry {
   id: ID;
   actorType: "applicant" | "operator" | "system";
@@ -304,4 +324,21 @@ export interface ApplicationDetail extends Application {
   references: Reference[];
   screening?: ScreeningResult;
   decision?: Decision;
+  messages: Message[];
+  documentRequests: DocumentRequest[];
+  lease?: Lease;
+  payments: Payment[];
+}
+
+/** A compact tracking card for the applicant's status list. */
+export interface ApplicationTracking {
+  id: ID;
+  reference: string;
+  status: ApplicationStatus;
+  unitTitle: string;
+  unitCode: string;
+  rent: Money;
+  submittedAt?: ISODateString;
+  openRequests: number;
+  hasUnreadFromOperator: boolean;
 }

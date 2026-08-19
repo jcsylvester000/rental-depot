@@ -42,7 +42,7 @@ export function AccountShell({ active, children }: { active: string; children: R
               </button>
             )}
           </aside>
-          <div>{children}</div>
+          <div id="main">{children}</div>
         </div>
       </div>
       <PublicFooter />

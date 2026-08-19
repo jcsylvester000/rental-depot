@@ -9,12 +9,16 @@
 import type {
   Application,
   ApplicationDetail,
+  ApplicationTracking,
   Property,
   Unit,
   UnitSummary,
   UnitStatus,
   Amenity,
   ApplicationStatus,
+  Message,
+  DocumentRequest,
+  Lease,
 } from "@/lib/types";
 
 export interface UnitListFilter {
@@ -64,6 +68,12 @@ export interface DataStore {
   getApplicationByRef(reference: string): Promise<ApplicationDetail | null>;
   getApplication(id: string): Promise<ApplicationDetail | null>;
   createApplication(input: CreateApplicationInput): Promise<Application>;
+
+  // Post-submission (Phase 3)
+  listTracking(email?: string): Promise<ApplicationTracking[]>;
+  addMessage(reference: string, body: string, from?: "applicant" | "operator"): Promise<Message | null>;
+  fulfillDocumentRequest(reference: string, requestId: string): Promise<DocumentRequest | null>;
+  signLease(reference: string, payDeposit?: boolean): Promise<Lease | null>;
 }
 
 /**

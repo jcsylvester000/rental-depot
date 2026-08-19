@@ -271,7 +271,7 @@ export function ApplyWizard({ unit, location }: { unit: Unit; location: string }
       </aside>
 
       {/* main */}
-      <main className="app-main">
+      <main className="app-main" id="main">
         <div className="app-progress-mobile">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span className="eyebrow">Step {step} of 5</span>

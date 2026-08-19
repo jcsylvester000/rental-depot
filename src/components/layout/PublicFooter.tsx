@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function PublicFooter() {
   return (
@@ -28,9 +29,12 @@ export function PublicFooter() {
           </div>
           <div>
             <h5>Company</h5>
-            <Link href="/">About</Link>
+            <Link href="/help">Help & support</Link>
             <Link href="/">Privacy</Link>
             <Link href="/">Contact</Link>
+            <div style={{ marginTop: 18 }}>
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
         <div className="footer-bottom">

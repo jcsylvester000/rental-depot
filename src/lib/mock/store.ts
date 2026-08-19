@@ -18,8 +18,12 @@ import type {
   UnitSummary,
   Application,
   ApplicationDetail,
+  ApplicationTracking,
   ApplicationDocument,
   DocumentType,
+  Message,
+  DocumentRequest,
+  Lease,
 } from "@/lib/types";
 import {
   units,
@@ -31,6 +35,10 @@ import {
   references,
   screeningResults,
   decisions,
+  messages,
+  documentRequests,
+  leases,
+  payments,
 } from "@/lib/mock/seed";
 
 function locationOf(u: Unit): { city: string; region: string } {
@@ -199,6 +207,91 @@ export const mockStore: DataStore = {
       references: references.filter((r) => r.applicationId === app.id),
       screening: screeningResults.find((s) => s.applicationId === app.id),
       decision: decisions.find((d) => d.applicationId === app.id),
+      messages: messages
+        .filter((m) => m.applicationId === app.id)
+        .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)),
+      documentRequests: documentRequests.filter((r) => r.applicationId === app.id),
+      lease: leases.find((l) => l.applicationId === app.id),
+      payments: payments.filter((p) => p.applicationId === app.id || (leases.find((l) => l.applicationId === app.id)?.id === p.leaseId)),
     };
+  },
+
+  async listTracking(email?: string): Promise<ApplicationTracking[]> {
+    const list = email
+      ? applications.filter((a) => {
+          const ap = applicants.find((p) => p.id === a.primaryApplicantId);
+          return ap?.email.toLowerCase() === email.toLowerCase();
+        })
+      : [...applications];
+    return list
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .map((a) => {
+        const unit = units.find((u) => u.id === a.unitId);
+        return {
+          id: a.id,
+          reference: a.reference,
+          status: a.status,
+          unitTitle: unit?.title ?? "",
+          unitCode: unit?.code ?? "",
+          rent: unit?.rent ?? { amountMinor: 0, currency: "PHP" as const },
+          submittedAt: a.submittedAt,
+          openRequests: documentRequests.filter((r) => r.applicationId === a.id && r.status === "open").length,
+          hasUnreadFromOperator: messages.some((m) => m.applicationId === a.id && m.from === "operator"),
+        };
+      });
+  },
+
+  async addMessage(reference, body, from = "applicant"): Promise<Message | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app || !body.trim()) return null;
+    const msg: Message = {
+      id: `msg_${app.reference}_${messages.filter((m) => m.applicationId === app.id).length + 1}`,
+      applicationId: app.id,
+      from,
+      authorName: from === "operator" ? "Property Manager" : undefined,
+      body: body.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    messages.push(msg);
+    return msg;
+  },
+
+  async fulfillDocumentRequest(reference, requestId): Promise<DocumentRequest | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    const req = documentRequests.find((r) => r.id === requestId && r.applicationId === app.id);
+    if (!req) return null;
+    req.status = "fulfilled";
+    req.fulfilledAt = new Date().toISOString();
+    documents.push({
+      id: `doc_${req.id}`,
+      applicationId: app.id,
+      type: req.docType,
+      label: req.label,
+      status: "uploaded",
+      uploadedAt: req.fulfilledAt,
+    });
+    // If no more open requests, move an incomplete application forward.
+    const stillOpen = documentRequests.some((r) => r.applicationId === app.id && r.status === "open");
+    if (!stillOpen && app.status === "incomplete") app.status = "complete";
+    app.updatedAt = new Date().toISOString();
+    return req;
+  },
+
+  async signLease(reference, payDeposit = false): Promise<Lease | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    const lease = leases.find((l) => l.applicationId === app.id);
+    if (!lease) return null;
+    lease.signedByApplicant = true;
+    if (payDeposit) {
+      const dep = payments.find((p) => p.leaseId === lease.id && p.type === "deposit");
+      if (dep) {
+        dep.status = "paid";
+        dep.paidAt = new Date().toISOString();
+      }
+    }
+    app.updatedAt = new Date().toISOString();
+    return lease;
   },
 };
