@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment variables (DATABASE_URL, CLOUDINARY_*, NEXT_PUBLIC_*) are set
+# in the Netlify dashboard, not committed here.
