@@ -12,6 +12,13 @@ const WORKSPACE = [
   { href: "/admin/analytics", label: "Analytics", icon: "chart" },
 ];
 
+const MANAGE = [
+  { href: "/admin/listings", label: "Listings & units", icon: "building" },
+  { href: "/admin/messages", label: "Messages", icon: "msg" },
+  { href: "/admin/audit", label: "Audit & compliance", icon: "shield" },
+  { href: "/admin/settings", label: "Settings & team", icon: "settings" },
+];
+
 export function AdminShell({ title, crumb = "Workspace", children }: { title: string; crumb?: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const [count, setCount] = React.useState<number | null>(null);
@@ -41,6 +48,14 @@ export function AdminShell({ title, crumb = "Workspace", children }: { title: st
               </Link>
             );
           })}
+        </div>
+        <div className="nav-section">
+          <div className="ns-title">Manage</div>
+          {MANAGE.map((l) => (
+            <Link key={l.href} href={l.href} className={`side-link ${pathname === l.href ? "active" : ""}`}>
+              <Icon name={l.icon} size={17} /> {l.label}
+            </Link>
+          ))}
         </div>
         <div className="side-foot">
           <div className="side-user">

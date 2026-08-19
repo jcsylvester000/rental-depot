@@ -357,6 +357,54 @@ export interface AdminQueueRow {
   flags: string[]; // lawful flags only (e.g. "eviction", "income_low")
 }
 
+export interface ScreeningRules {
+  incomeMultiple: number;
+  minCreditScore: number;
+  flagNotReject: boolean; // flag for human review vs auto-decline
+  requireConsentBeforeScreening: boolean;
+}
+
+export interface MessageTemplate {
+  id: ID;
+  name: string;
+  body: string;
+}
+
+export interface Branding {
+  productName: string;
+  accent: string;
+  applicantIntro: string;
+}
+
+export interface IntegrationStatus {
+  key: string;
+  name: string;
+  category: "screening" | "payments" | "esign" | "portal";
+  connected: boolean;
+  detail: string;
+}
+
+export interface AppSettings {
+  applicationFee: Money;
+  jurisdictionNote: string;
+  screening: ScreeningRules;
+  branding: Branding;
+  templates: MessageTemplate[];
+  leaseClauses: string;
+  integrations: IntegrationStatus[];
+}
+
+/** Derived audit event for the compliance log. */
+export interface AuditEvent {
+  id: ID;
+  createdAt: ISODateString;
+  actor: string;
+  action: string;
+  entity: string;
+  reference?: string;
+  detail?: string;
+}
+
 /** Operator analytics rollup. */
 export interface AnalyticsSummary {
   funnel: { views: number; applications: number; approvals: number; leases: number };

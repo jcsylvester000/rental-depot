@@ -14,6 +14,7 @@ import type {
   CreateApplicationInput,
   AdminQueueFilter,
   DecisionInput,
+  CreateUnitInput,
 } from "@/lib/data/store";
 import type {
   Unit,
@@ -31,6 +32,10 @@ import type {
   Decision,
   OperatorNote,
   ScreeningResult,
+  AppSettings,
+  AuditEvent,
+  User,
+  Unit as UnitT,
 } from "@/lib/types";
 import {
   units,
@@ -47,6 +52,8 @@ import {
   leases,
   payments,
   operatorNotes,
+  users,
+  settings,
 } from "@/lib/mock/seed";
 
 const REQUIRED_DOC_TYPES: DocumentType[] = ["gov_id", "payslip", "income_proof"];
@@ -491,5 +498,91 @@ export const mockStore: DataStore = {
     }
     app.updatedAt = new Date().toISOString();
     return lease;
+  },
+
+  async listUnitsAdmin(): Promise<UnitT[]> {
+    return [...units].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+
+  async updateUnit(id: string, patch: Partial<UnitT>): Promise<UnitT | null> {
+    const unit = units.find((u) => u.id === id);
+    if (!unit) return null;
+    Object.assign(unit, patch);
+    return unit;
+  },
+
+  async createUnit(input: CreateUnitInput): Promise<UnitT> {
+    const unit: UnitT = {
+      id: `unit_${units.length + 1}_${input.code.toLowerCase()}`,
+      propertyId: input.propertyId,
+      code: input.code,
+      title: input.title,
+      type: input.type,
+      bedrooms: input.bedrooms,
+      bathrooms: input.bathrooms,
+      areaSqm: input.areaSqm,
+      rent: { amountMinor: input.rentMinor, currency: "PHP" },
+      deposit: { amountMinor: input.depositMinor, currency: "PHP" },
+      status: "vacant",
+      amenities: [],
+      petsAllowed: input.petsAllowed,
+      incomeMultiple: input.incomeMultiple,
+      availableFrom: input.availableFrom,
+      description: input.description,
+      photos: [],
+      createdAt: new Date().toISOString(),
+    };
+    units.push(unit);
+    return unit;
+  },
+
+  async getSettings(): Promise<AppSettings> {
+    return settings;
+  },
+
+  async updateSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
+    if (patch.screening) Object.assign(settings.screening, patch.screening);
+    if (patch.branding) Object.assign(settings.branding, patch.branding);
+    if (patch.applicationFee) settings.applicationFee = patch.applicationFee;
+    if (patch.jurisdictionNote != null) settings.jurisdictionNote = patch.jurisdictionNote;
+    if (patch.leaseClauses != null) settings.leaseClauses = patch.leaseClauses;
+    if (patch.templates) settings.templates = patch.templates;
+    if (patch.integrations) settings.integrations = patch.integrations;
+    return settings;
+  },
+
+  async listUsers(): Promise<User[]> {
+    return [...users];
+  },
+
+  async addUser(input): Promise<User> {
+    const user: User = {
+      id: `user_${users.length + 1}`,
+      name: input.name,
+      email: input.email,
+      role: input.role,
+      propertyIds: input.propertyIds ?? [],
+      createdAt: new Date().toISOString(),
+    };
+    users.push(user);
+    return user;
+  },
+
+  async getAuditLog(): Promise<AuditEvent[]> {
+    const events: AuditEvent[] = [];
+    const refOf = (appId: string) => applications.find((a) => a.id === appId)?.reference;
+
+    applications.forEach((a) => {
+      const applicant = applicants.find((p) => p.id === a.primaryApplicantId);
+      if (a.submittedAt) events.push({ id: `au_sub_${a.id}`, createdAt: a.submittedAt, actor: applicant?.fullName ?? "Applicant", action: "submitted application", entity: "Application", reference: a.reference });
+      if (a.consentGivenAt) events.push({ id: `au_con_${a.id}`, createdAt: a.consentGivenAt, actor: applicant?.fullName ?? "Applicant", action: "gave screening consent", entity: "Consent", reference: a.reference, detail: "Timestamped consent recorded" });
+    });
+    screeningResults.forEach((s) => { if (s.completedAt) events.push({ id: `au_scr_${s.id}`, createdAt: s.completedAt, actor: "System", action: "completed screening", entity: "Screening", reference: refOf(s.applicationId), detail: `Provider ${s.providerRef ?? "—"}` }); });
+    decisions.forEach((d) => events.push({ id: `au_dec_${d.id}`, createdAt: d.decidedAt, actor: "Operator", action: `decision: ${d.outcome}`, entity: "Decision", reference: refOf(d.applicationId), detail: d.adverseActionIssued ? "Adverse-action notice issued" : d.reasonCode }));
+    documentRequests.forEach((r) => events.push({ id: `au_req_${r.id}`, createdAt: r.createdAt, actor: "Operator", action: "requested document", entity: "DocumentRequest", reference: refOf(r.applicationId), detail: r.label }));
+    operatorNotes.forEach((n) => events.push({ id: `au_note_${n.id}`, createdAt: n.createdAt, actor: n.authorName, action: "added internal note", entity: "Note", reference: refOf(n.applicationId) }));
+    leases.forEach((l) => events.push({ id: `au_lease_${l.id}`, createdAt: l.createdAt, actor: "Operator", action: "generated lease", entity: "Lease", reference: refOf(l.applicationId) }));
+
+    return events.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   },
 };

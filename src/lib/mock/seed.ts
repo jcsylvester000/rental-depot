@@ -24,6 +24,7 @@ import type {
   Lease,
   Payment,
   OperatorNote,
+  AppSettings,
 } from "@/lib/types";
 
 export const owners: Owner[] = [
@@ -359,3 +360,27 @@ export const payments: Payment[] = [
 export const operatorNotes: OperatorNote[] = [
   { id: "note_2041_1", applicationId: "app_2041", authorName: "Property Manager", body: "Strong file — screening clean, income comfortably above threshold.", createdAt: "2026-08-18T08:10:00.000Z" },
 ];
+
+users.push(
+  { id: "user_agent", name: "Lea Fernandez", email: "lea@rentaldepot.example", role: "agent", propertyIds: ["prop_1"], createdAt: "2026-02-01T02:00:00.000Z" },
+  { id: "user_admin", name: "Marco Diaz", email: "marco@rentaldepot.example", role: "admin", propertyIds: [], createdAt: "2026-01-10T02:00:00.000Z" },
+);
+
+export const settings: AppSettings = {
+  applicationFee: money(100000),
+  jurisdictionNote: "Fees are shown to applicants before payment. Where a jurisdiction caps or prohibits application fees, this amount is adjusted automatically.",
+  screening: { incomeMultiple: 3, minCreditScore: 650, flagNotReject: true, requireConsentBeforeScreening: true },
+  branding: { productName: "Rental Depot", accent: "#2F6E6A", applicantIntro: "Find a home, apply in minutes, know exactly where you stand." },
+  templates: [
+    { id: "tpl_ack", name: "Acknowledge receipt", body: "Thanks for applying — we've received your application and will be in touch soon." },
+    { id: "tpl_docs", name: "Request documents", body: "To continue, please upload the following document(s): {items}." },
+    { id: "tpl_approve", name: "Approval", body: "Great news — your application is approved! Your lease is ready to review and sign." },
+  ],
+  leaseClauses: "Standard residential lease. 12-month term, rent due on the 1st, security deposit equal to two months, maintenance and quiet-enjoyment clauses, 30-day notice for renewal.",
+  integrations: [
+    { key: "screening", name: "TenantCheck Screening", category: "screening", connected: true, detail: "Credit, criminal, eviction, income" },
+    { key: "payments", name: "PayGate", category: "payments", connected: true, detail: "Fees, deposits, payouts" },
+    { key: "esign", name: "SignFlow", category: "esign", connected: false, detail: "Lease e-signature routing" },
+    { key: "portal", name: "ListingSync", category: "portal", connected: false, detail: "Push listings to external portals" },
+  ],
+};

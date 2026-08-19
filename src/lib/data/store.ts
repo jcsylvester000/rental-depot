@@ -25,6 +25,9 @@ import type {
   DecisionOutcome,
   OperatorNote,
   ScreeningResult,
+  AppSettings,
+  AuditEvent,
+  User,
 } from "@/lib/types";
 
 export interface UnitListFilter {
@@ -89,6 +92,32 @@ export interface DataStore {
   addNote(reference: string, body: string, authorName?: string): Promise<OperatorNote | null>;
   requestDocument(reference: string, docType: string, label: string, reason: string): Promise<DocumentRequest | null>;
   rerunScreening(reference: string): Promise<ScreeningResult | null>;
+
+  // Manage (Phase 5)
+  listUnitsAdmin(): Promise<Unit[]>;
+  updateUnit(id: string, patch: Partial<Unit>): Promise<Unit | null>;
+  createUnit(input: CreateUnitInput): Promise<Unit>;
+  getSettings(): Promise<AppSettings>;
+  updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+  listUsers(): Promise<User[]>;
+  addUser(input: { name: string; email: string; role: User["role"]; propertyIds?: string[] }): Promise<User>;
+  getAuditLog(): Promise<AuditEvent[]>;
+}
+
+export interface CreateUnitInput {
+  propertyId: string;
+  code: string;
+  title: string;
+  type: Unit["type"];
+  bedrooms: number;
+  bathrooms: number;
+  areaSqm: number;
+  rentMinor: number;
+  depositMinor: number;
+  petsAllowed: boolean;
+  incomeMultiple: number;
+  availableFrom: string;
+  description: string;
 }
 
 export interface AdminQueueFilter {
