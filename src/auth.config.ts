@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { NextResponse } from "next/server";
 import type { UserRole } from "@/lib/types";
 
 const OPERATOR_ROLES = ["agent", "manager", "admin"];
@@ -28,6 +29,14 @@ export const authConfig = {
       const path = request.nextUrl.pathname;
       const isOperator = !!role && OPERATOR_ROLES.includes(role);
 
+      // Operator API — return a JSON 401 (not an HTML redirect) for clients.
+      if (path.startsWith("/api/v1/admin")) {
+        if (isOperator) return true;
+        return NextResponse.json(
+          { ok: false, error: { code: "forbidden", message: "Operator access required" } },
+          { status: 401 },
+        );
+      }
       if (path.startsWith("/admin")) return isOperator;
       if (
         path.startsWith("/account/profile") ||

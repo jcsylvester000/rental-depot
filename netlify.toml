@@ -1,9 +1,19 @@
+# Netlify configuration — Rental Depot (Next.js)
+# The Next.js runtime is applied by @netlify/plugin-nextjs (auto-installed on
+# Netlify when Next is detected; pinned here for clarity). It handles SSR,
+# route handlers, and middleware — no `publish` dir needs setting.
+
 [build]
   command = "npm run build"
-  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Environment variables (DATABASE_URL, CLOUDINARY_*, NEXT_PUBLIC_*) are set
-# in the Netlify dashboard, not committed here.
+# Environment variables are set in the Netlify dashboard (Site settings → Env),
+# never committed. Required:
+#   DATABASE_URL, DIRECT_URL, AUTH_SECRET,
+#   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
+#   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
