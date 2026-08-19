@@ -175,7 +175,13 @@ async function main() {
     { id: "msg_2039_1", applicationId: "app_2039", from: "operator", authorName: "Property Manager", body: "Congratulations Diego! Your lease is ready to review and sign.", createdAt: D("2026-08-18T02:05:00.000Z")! },
     { id: "msg_2038_1", applicationId: "app_2038", from: "operator", authorName: "Property Manager", body: "Welcome, Grace! Your lease is signed and the unit is yours from Aug 15.", createdAt: D("2026-08-12T02:10:00.000Z")! },
     { id: "msg_2040_1", applicationId: "app_2040", from: "operator", authorName: "Property Manager", body: "Thank you for applying, Tomas. Unfortunately we can't proceed on this unit at this time.", createdAt: D("2026-08-15T02:05:00.000Z")! },
+    // A pending property chat request (applicant → operator) awaiting acceptance
+    { id: "msg_2047_1", applicationId: "app_2047", from: "applicant", body: "Hi! Is GRD-4821 still available? I'd love to ask a couple of questions about the unit before deciding.", createdAt: D("2026-08-18T09:00:00.000Z")! },
   ] });
+
+  // Chat invitation state: established threads are accepted; APP-2047 is a pending request the operator must accept.
+  await prisma.application.updateMany({ where: { reference: { in: ["APP-2041", "APP-2043", "APP-2039", "APP-2038", "APP-2040"] } }, data: { chatStatus: "accepted", chatDecidedAt: D("2026-08-18T08:30:00.000Z") } });
+  await prisma.application.update({ where: { reference: "APP-2047" }, data: { chatStatus: "pending", chatInitiatedBy: "applicant", chatRequestedAt: D("2026-08-18T09:00:00.000Z") } });
 
   await prisma.documentRequest.create({ data: { id: "req_2043_1", applicationId: "app_2043", docType: "payslip", label: "Recent payslip", reason: "We need your latest payslip to verify income.", status: "open", createdAt: D("2026-08-17T01:30:00.000Z")! } });
 

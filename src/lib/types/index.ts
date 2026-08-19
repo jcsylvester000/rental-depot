@@ -140,8 +140,11 @@ export interface Unit {
   description: string;
   photos: string[]; // URLs (Cloudinary later)
   views: number; // listing view count (drives the analytics funnel)
+  published?: boolean; // false = owner-submitted, awaiting operator review (hidden from public)
   createdAt: ISODateString;
 }
+
+export type ChatStatus = "pending" | "accepted" | "declined";
 
 export interface Applicant {
   id: ID;
@@ -240,6 +243,11 @@ export interface Application {
   signatureName?: string;
   feeStatus: PaymentStatus;
   rubric?: RubricScore;
+  // Property chat invitation state (thread stays gated until the recipient accepts).
+  chatStatus?: ChatStatus;
+  chatInitiatedBy?: "applicant" | "operator";
+  chatRequestedAt?: ISODateString;
+  chatDecidedAt?: ISODateString;
   submittedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -376,6 +384,8 @@ export interface AdminQueueRow {
   incomeToRent?: number;
   creditScore?: number;
   flags: string[]; // lawful flags only (e.g. "eviction", "income_low")
+  chatStatus?: ChatStatus;
+  chatInitiatedBy?: "applicant" | "operator";
 }
 
 export interface ScreeningRules {

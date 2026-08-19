@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { ApplicationDetail, Message, DocumentRequest, Lease, Payment } from "@/lib/types";
+import type { ApplicationDetail, Message, DocumentRequest, Lease, Payment, ChatStatus } from "@/lib/types";
 import { formatMoney } from "@/lib/money";
 import { formatDateTime, formatDate } from "@/lib/format";
 import { STATUS_EXPLANATION } from "@/lib/status-display";
@@ -17,11 +17,19 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
   const { toast } = useToast();
   const ref = initial.reference;
   const [messages, setMessages] = React.useState<Message[]>(initial.messages);
+  const [chat, setChat] = React.useState<{ status?: ChatStatus; initiatedBy?: "applicant" | "operator" }>({ status: initial.chatStatus, initiatedBy: initial.chatInitiatedBy });
   const [requests, setRequests] = React.useState<DocumentRequest[]>(initial.documentRequests);
   const [lease, setLease] = React.useState<Lease | undefined>(initial.lease);
   const [payments, setPayments] = React.useState<Payment[]>(initial.payments);
   const [draft, setDraft] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
   const explain = STATUS_EXPLANATION[initial.status];
+
+  const unitCode = initial.unit.code;
+  const pendingIncoming = chat.status === "pending" && chat.initiatedBy === "operator"; // operator asked; applicant must accept
+  const pendingOutgoing = chat.status === "pending" && chat.initiatedBy === "applicant"; // applicant asked; waiting on operator
+  const declined = chat.status === "declined";
+  const canSend = !pendingIncoming && !pendingOutgoing && !declined;
 
   async function send() {
     if (!draft.trim()) return;
@@ -31,7 +39,32 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }),
     });
     const j = await res.json();
-    if (j.ok) setMessages((m) => [...m, j.data]);
+    if (j.ok) {
+      setMessages((m) => [...m, j.data.message]);
+      setChat((c) => ({ status: j.data.chatStatus, initiatedBy: j.data.chatStatus === "pending" ? "applicant" : c.initiatedBy }));
+      if (j.data.chatStatus === "pending") toast("Chat request sent — the property manager will accept to open the conversation");
+    } else {
+      toast(j.error?.message ?? "Couldn't send that message");
+    }
+  }
+
+  async function respondChat(action: "accept" | "decline") {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/v1/applications/${ref}/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }),
+      });
+      const j = await res.json();
+      if (j.ok) {
+        setChat({ status: j.data.chatStatus, initiatedBy: j.data.chatInitiatedBy });
+        if (action === "accept") {
+          const r2 = await fetch(`/api/v1/applications/${ref}`);
+          const j2 = await r2.json();
+          if (j2.ok) setMessages(j2.data.messages);
+        }
+        toast(action === "accept" ? "Chat accepted" : "Chat request declined");
+      }
+    } finally { setBusy(false); }
   }
 
   async function resubmit(req: DocumentRequest, asset: UploadedAsset) {
@@ -147,9 +180,26 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
 
       {/* messages */}
       <div className="card" style={{ padding: 24 }}>
-        <h3 style={{ fontSize: 17, marginBottom: 14 }}>Messages</h3>
+        <h3 style={{ fontSize: 17, marginBottom: 4 }}>Messages</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 0, marginBottom: 14 }}>This conversation is about <b>{unitCode}</b>. Chats are private and are removed after 15 days of inactivity.</p>
+
+        {pendingIncoming && (
+          <div className="trust-note" style={{ background: "var(--amber-l)", marginBottom: 14 }}>
+            <span className="tn-ic"><Icon name="msg" size={16} /></span>
+            <div style={{ flex: 1 }}>
+              The property manager wants to chat about <b>{unitCode}</b>. Accept to open the conversation.
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <Button variant="primary" size="sm" onClick={() => respondChat("accept")} disabled={busy}><Icon name="check" size={15} /> Accept</Button>
+                <Button variant="ghost" size="sm" onClick={() => respondChat("decline")} disabled={busy}>Decline</Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {pendingOutgoing && <div className="trust-note" style={{ marginBottom: 14 }}><span className="tn-ic"><Icon name="clock" size={16} /></span><div>Chat request sent — the property manager will accept it to open the conversation.</div></div>}
+        {declined && <div className="trust-note" style={{ background: "var(--clay-l)", marginBottom: 14 }}><span className="tn-ic"><Icon name="flag" size={16} /></span><div>This chat request was declined.</div></div>}
+
         <div className="thread">
-          {messages.length === 0 && <p className="muted" style={{ fontSize: 13, textAlign: "center" }}>No messages yet.</p>}
+          {messages.length === 0 && !chat.status && <p className="muted" style={{ fontSize: 13, textAlign: "center" }}>No conversation yet. Your first message sends a chat request to the property manager for this unit.</p>}
           {messages.map((m) => (
             <div key={m.id} className={`bubble ${m.from === "applicant" ? "me" : m.from === "system" ? "sys" : "them"}`}>
               {m.from !== "system" && <div className="b-meta">{m.from === "applicant" ? "You" : m.authorName ?? "Operator"} · {formatDateTime(m.createdAt)}</div>}
@@ -157,10 +207,12 @@ export function StatusDetailView({ initial }: { initial: ApplicationDetail }) {
             </div>
           ))}
         </div>
-        <div className="thread-input">
-          <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Write a message to the property manager…" />
-          <Button variant="primary" onClick={send} disabled={!draft.trim()}><Icon name="msg" size={15} /> Send</Button>
-        </div>
+        {canSend && (
+          <div className="thread-input">
+            <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={chat.status === "accepted" ? "Write a message to the property manager…" : `Ask about ${unitCode}…`} />
+            <Button variant="primary" onClick={send} disabled={!draft.trim()}><Icon name="msg" size={15} /> {chat.status === "accepted" ? "Send" : "Send request"}</Button>
+          </div>
+        )}
       </div>
 
       {/* notification preferences */}

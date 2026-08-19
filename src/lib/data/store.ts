@@ -94,7 +94,12 @@ export interface DataStore {
 
   // Post-submission (Phase 3)
   listTracking(email?: string): Promise<ApplicationTracking[]>;
-  addMessage(reference: string, body: string, from?: "applicant" | "operator"): Promise<Message | null>;
+  /** User-facing chat send. Gated by the property chat invitation (first message = request). */
+  addMessage(reference: string, body: string, from?: "applicant" | "operator"): Promise<SendMessageResult>;
+  acceptChat(reference: string, by: "applicant" | "operator"): Promise<Application | null>;
+  declineChat(reference: string, by: "applicant" | "operator"): Promise<Application | null>;
+  /** Hard-delete chat messages in threads with no activity for `days` days. Returns count removed. */
+  purgeStaleChats(days?: number): Promise<{ threadsPurged: number; messagesDeleted: number }>;
   fulfillDocumentRequest(reference: string, requestId: string, asset?: { assetRef?: string; fileName?: string }): Promise<DocumentRequest | null>;
   signLease(reference: string, payDeposit?: boolean): Promise<Lease | null>;
 
@@ -110,6 +115,8 @@ export interface DataStore {
   listUnitsAdmin(): Promise<Unit[]>;
   updateUnit(id: string, patch: Partial<Unit>): Promise<Unit | null>;
   createUnit(input: CreateUnitInput): Promise<Unit>;
+  /** Bulk create listings from parsed CSV rows (resolves/creates properties by name). */
+  bulkCreateUnits(rows: BulkListingRow[], published: boolean): Promise<BulkUploadResult>;
   getSettings(): Promise<AppSettings>;
   updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
   listUsers(): Promise<User[]>;
@@ -134,6 +141,39 @@ export interface CreateUnitInput {
   availableFrom: string;
   description: string;
 }
+
+/** One parsed CSV row for bulk listing upload (property is resolved/created by name). */
+export interface BulkListingRow {
+  propertyName: string;
+  city?: string;
+  region?: string;
+  code: string;
+  title: string;
+  propertyClass: "residential" | "commercial";
+  type: string;
+  permittedUse?: string;
+  bedrooms: number;
+  bathrooms: number;
+  areaSqm: number;
+  rentMinor: number;
+  depositMinor: number;
+  petsAllowed: boolean;
+  incomeMultiple: number;
+  availableFrom: string;
+  amenities: string[];
+  description: string;
+}
+
+export interface BulkUploadResult {
+  created: number;
+  propertiesCreated: number;
+  errors: { row: number; message: string }[];
+}
+
+/** Result of a user-facing chat send, so the caller can surface the invitation gate. */
+export type SendMessageResult =
+  | { ok: true; message: Message; chatStatus: "pending" | "accepted"; chatInitiatedBy?: "applicant" | "operator" }
+  | { ok: false; code: "not_found" | "pending_wait" | "must_accept" | "declined"; message: string };
 
 export interface AdminQueueFilter {
   status?: ApplicationStatus;

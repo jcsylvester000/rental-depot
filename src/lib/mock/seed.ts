@@ -494,7 +494,16 @@ payments.push(
 messages.push(
   { id: "msg_2038_1", applicationId: "app_2038", from: "operator", authorName: "Property Manager", body: "Welcome, Grace! Your lease is signed and the unit is yours from Aug 15.", createdAt: "2026-08-12T02:10:00.000Z" },
   { id: "msg_2040_1", applicationId: "app_2040", from: "operator", authorName: "Property Manager", body: "Thank you for applying, Tomas. Unfortunately we can't proceed on this unit at this time.", createdAt: "2026-08-15T02:05:00.000Z" },
+  { id: "msg_2047_1", applicationId: "app_2047", from: "applicant", body: "Hi! Is GRD-4821 still available? I'd love to ask a couple of questions about the unit before deciding.", createdAt: "2026-08-18T09:00:00.000Z" },
 );
+
+// Chat invitation state: established threads accepted; APP-2047 is a pending request awaiting operator acceptance.
+["app_2041", "app_2043", "app_2039", "app_2038", "app_2040"].forEach((id) => {
+  const a = applications.find((x) => x.id === id);
+  if (a) { a.chatStatus = "accepted"; a.chatDecidedAt = "2026-08-18T08:30:00.000Z"; }
+});
+const _amara = applications.find((x) => x.id === "app_2047");
+if (_amara) { _amara.chatStatus = "pending"; _amara.chatInitiatedBy = "applicant"; _amara.chatRequestedAt = "2026-08-18T09:00:00.000Z"; }
 
 export const settings: AppSettings = {
   applicationFee: money(100000),

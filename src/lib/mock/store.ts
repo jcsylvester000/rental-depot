@@ -15,6 +15,9 @@ import type {
   AdminQueueFilter,
   DecisionInput,
   CreateUnitInput,
+  BulkListingRow,
+  BulkUploadResult,
+  SendMessageResult,
 } from "@/lib/data/store";
 import type {
   Unit,
@@ -35,6 +38,7 @@ import type {
   AppSettings,
   AuditEvent,
   User,
+  Property,
   Unit as UnitT,
 } from "@/lib/types";
 import {
@@ -94,7 +98,8 @@ function toSummary(u: Unit): UnitSummary {
 
 export const mockStore: DataStore = {
   async listUnits(filter?: UnitListFilter): Promise<UnitSummary[]> {
-    let list = [...units];
+    // Public discovery excludes owner-submitted listings still awaiting operator review.
+    let list = units.filter((u) => u.published !== false);
 
     if (filter) {
       if (filter.city) {
@@ -286,6 +291,8 @@ export const mockStore: DataStore = {
         incomeToRent: screening?.incomeToRent,
         creditScore: screening?.creditScore,
         flags,
+        chatStatus: a.chatStatus,
+        chatInitiatedBy: a.chatInitiatedBy,
       };
     });
 
@@ -459,19 +466,98 @@ export const mockStore: DataStore = {
       });
   },
 
-  async addMessage(reference, body, from = "applicant"): Promise<Message | null> {
+  async addMessage(reference, body, from = "applicant"): Promise<SendMessageResult> {
     const app = applications.find((a) => a.reference === reference);
-    if (!app || !body.trim()) return null;
+    if (!app || !body.trim()) return { ok: false, code: "not_found", message: "Application not found" };
+
+    // Chat invitation gate — the first message on a property is a request the recipient must accept.
+    if (app.chatStatus === "declined") return { ok: false, code: "declined", message: "This chat request was declined." };
+    if (app.chatStatus === "pending") {
+      if (app.chatInitiatedBy === from) return { ok: false, code: "pending_wait", message: "Waiting for the other party to accept your chat request." };
+      return { ok: false, code: "must_accept", message: "Accept the chat request before replying." };
+    }
+    const now = new Date().toISOString();
+    const isRequest = app.chatStatus == null;
+    if (isRequest) { app.chatStatus = "pending"; app.chatInitiatedBy = from; app.chatRequestedAt = now; }
+
     const msg: Message = {
       id: `msg_${app.reference}_${messages.filter((m) => m.applicationId === app.id).length + 1}`,
       applicationId: app.id,
       from,
       authorName: from === "operator" ? "Property Manager" : undefined,
       body: body.trim(),
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     };
     messages.push(msg);
-    return msg;
+    app.updatedAt = now;
+    return { ok: true, message: msg, chatStatus: isRequest ? "pending" : "accepted", chatInitiatedBy: app.chatInitiatedBy };
+  },
+
+  async acceptChat(reference, by): Promise<Application | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    if (app.chatStatus === "pending" && app.chatInitiatedBy !== by) {
+      const now = new Date().toISOString();
+      app.chatStatus = "accepted"; app.chatDecidedAt = now; app.updatedAt = now;
+      messages.push({ id: `msg_${app.reference}_accept_${Date.now()}`, applicationId: app.id, from: "system", body: "Chat request accepted — you can now message each other about this property.", createdAt: now });
+    }
+    return app;
+  },
+
+  async declineChat(reference, by): Promise<Application | null> {
+    const app = applications.find((a) => a.reference === reference);
+    if (!app) return null;
+    if (app.chatStatus === "pending" && app.chatInitiatedBy !== by) {
+      const now = new Date().toISOString();
+      app.chatStatus = "declined"; app.chatDecidedAt = now; app.updatedAt = now;
+    }
+    return app;
+  },
+
+  async purgeStaleChats(days = 15): Promise<{ threadsPurged: number; messagesDeleted: number }> {
+    const cutoff = Date.now() - days * 864e5;
+    let threadsPurged = 0, messagesDeleted = 0;
+    for (const app of applications) {
+      const thread = messages.filter((m) => m.applicationId === app.id && m.from !== "system");
+      if (thread.length === 0) continue;
+      const last = Math.max(...thread.map((m) => new Date(m.createdAt).getTime()));
+      if (last < cutoff) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].applicationId === app.id && messages[i].from !== "system") { messages.splice(i, 1); messagesDeleted++; }
+        }
+        app.chatStatus = undefined; app.chatInitiatedBy = undefined; app.chatRequestedAt = undefined; app.chatDecidedAt = undefined;
+        threadsPurged++;
+      }
+    }
+    return { threadsPurged, messagesDeleted };
+  },
+
+  async bulkCreateUnits(rows: BulkListingRow[], published: boolean): Promise<BulkUploadResult> {
+    let created = 0, propertiesCreated = 0;
+    const errors: { row: number; message: string }[] = [];
+    rows.forEach((row, i) => {
+      const rowNo = i + 1;
+      if (units.some((u) => u.code.toLowerCase() === row.code.toLowerCase())) { errors.push({ row: rowNo, message: `${row.code}: a listing with this code already exists.` }); return; }
+      let property = properties.find((p) => p.name.toLowerCase() === row.propertyName.toLowerCase());
+      if (!property) {
+        if (!row.city || !row.region) { errors.push({ row: rowNo, message: `${row.code}: new property "${row.propertyName}" needs city and region.` }); return; }
+        property = { id: `prop_${properties.length + 1}_${Date.now()}`, ownerId: "own_1", name: row.propertyName, addressLine: row.city, city: row.city, region: row.region, postcode: "", createdAt: new Date().toISOString() } as Property;
+        properties.push(property);
+        propertiesCreated++;
+      }
+      units.push({
+        id: `unit_bulk_${row.code.toLowerCase()}_${Date.now()}`,
+        propertyId: property.id, code: row.code, title: row.title,
+        type: row.type as UnitT["type"], propertyClass: row.propertyClass, permittedUse: row.permittedUse,
+        bedrooms: row.bedrooms, bathrooms: row.bathrooms, areaSqm: row.areaSqm,
+        rent: { amountMinor: row.rentMinor, currency: "PHP" }, deposit: { amountMinor: row.depositMinor, currency: "PHP" },
+        status: "vacant", amenities: row.amenities as UnitT["amenities"], petsAllowed: row.petsAllowed,
+        incomeMultiple: row.incomeMultiple, availableFrom: row.availableFrom, description: row.description,
+        photos: [], views: 0, published, createdAt: new Date().toISOString(),
+      });
+      created++;
+    });
+    return { created, propertiesCreated, errors };
   },
 
   async fulfillDocumentRequest(reference, requestId, asset): Promise<DocumentRequest | null> {

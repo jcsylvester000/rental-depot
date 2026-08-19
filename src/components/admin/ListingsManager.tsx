@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { Unit, UnitStatus, AdminQueueRow } from "@/lib/types";
 import { UNIT_STATUSES } from "@/lib/types";
 import { formatMoney } from "@/lib/money";
@@ -8,6 +9,7 @@ import { UNIT_STATUS_LABELS } from "@/lib/labels";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/lib/client/toast";
+import { BulkUploadPanel } from "@/components/BulkUploadPanel";
 
 export function ListingsManager({
   units: initialUnits,
@@ -19,8 +21,10 @@ export function ListingsManager({
   properties: { id: string; name: string }[];
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [units, setUnits] = React.useState(initialUnits);
   const [adding, setAdding] = React.useState(false);
+  const [bulkOpen, setBulkOpen] = React.useState(false);
 
   const appCount = (unitId: string) => rows.filter((r) => r.unitId === unitId).length;
 
@@ -34,9 +38,14 @@ export function ListingsManager({
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
         <p className="muted" style={{ margin: 0, fontSize: 14 }}>Set availability and per-unit screening criteria before a unit takes applications.</p>
-        <Button variant="primary" size="sm" onClick={() => setAdding((a) => !a)}><Icon name="plus" size={15} /> Add listing</Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a className="btn btn-ghost btn-sm" href="/api/v1/listings/template"><Icon name="file" size={15} /> Download CSV template</a>
+          <Button variant="ghost" size="sm" onClick={() => setBulkOpen((b) => !b)}><Icon name="upload" size={15} /> Bulk upload CSV</Button>
+          <Button variant="primary" size="sm" onClick={() => setAdding((a) => !a)}><Icon name="plus" size={15} /> Add listing</Button>
+        </div>
       </div>
 
+      {bulkOpen && <BulkUploadPanel endpoint="/api/v1/admin/units/bulk" onImported={() => { router.refresh(); toast("Listings imported"); }} />}
       {adding && <AddListingForm properties={properties} onCreated={(u) => { setUnits((us) => [u, ...us]); setAdding(false); toast("Listing created"); }} />}
 
       <div className="block">
@@ -47,7 +56,15 @@ export function ListingsManager({
           <tbody>
             {units.map((u) => (
               <tr key={u.id}>
-                <td><div className="q-name">{u.title}{u.propertyClass === "commercial" && <span className="pill accent" style={{ marginLeft: 6, fontSize: 10 }}>Commercial</span>}</div><div className="q-sub">{u.code} · {u.propertyClass === "commercial" ? (u.permittedUse ?? "Commercial") : u.bedrooms === 0 ? "Studio" : `${u.bedrooms} bed`}</div></td>
+                <td>
+                  <div className="q-name">{u.title}
+                    {u.propertyClass === "commercial" && <span className="pill accent" style={{ marginLeft: 6, fontSize: 10 }}>Commercial</span>}
+                    {u.published === false && <span className="pill" style={{ marginLeft: 6, fontSize: 10, background: "var(--amber-l)", color: "var(--amber-d)" }}>Pending review</span>}
+                  </div>
+                  <div className="q-sub">{u.code} · {u.propertyClass === "commercial" ? (u.permittedUse ?? "Commercial") : u.bedrooms === 0 ? "Studio" : `${u.bedrooms} bed`}
+                    {u.published === false && <> · <button className="link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--verdigris)" }} onClick={() => patch(u.id, { published: true })}>Publish</button></>}
+                  </div>
+                </td>
                 <td>{formatMoney(u.rent)}</td>
                 <td>
                   <select className="select" style={{ width: "auto", padding: "6px 8px", fontSize: 13 }} value={u.status} onChange={(e) => patch(u.id, { status: e.target.value as UnitStatus })}>

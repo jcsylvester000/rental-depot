@@ -13,6 +13,9 @@ import type {
   AdminQueueFilter,
   DecisionInput,
   CreateUnitInput,
+  BulkListingRow,
+  BulkUploadResult,
+  SendMessageResult,
 } from "@/lib/data/store";
 import type {
   Unit, UnitSummary, Application, ApplicationDetail, ApplicationTracking,
@@ -36,7 +39,7 @@ function mapUnit(u: any): Unit {
     rent: money(u.rentMinor, u.rentCurrency), deposit: money(u.depositMinor, u.depositCurrency),
     status: u.status, amenities: u.amenities, petsAllowed: u.petsAllowed,
     incomeMultiple: u.incomeMultiple, minCreditScore: u.minCreditScore ?? undefined,
-    availableFrom: iso(u.availableFrom)!, description: u.description, photos: u.photos, views: u.views ?? 0, createdAt: iso(u.createdAt)!,
+    availableFrom: iso(u.availableFrom)!, description: u.description, photos: u.photos, views: u.views ?? 0, published: u.published ?? true, createdAt: iso(u.createdAt)!,
   };
 }
 function mapUnitSummary(u: any): UnitSummary {
@@ -63,7 +66,10 @@ function mapApplication(a: any): Application {
     desiredMoveIn: iso(a.desiredMoveIn), leaseTermMonths: a.leaseTermMonths ?? undefined,
     monthlyIncome: a.monthlyIncomeMinor != null ? money(a.monthlyIncomeMinor, a.monthlyIncomeCurrency ?? "PHP") : undefined,
     consentGivenAt: iso(a.consentGivenAt), signatureName: a.signatureName ?? undefined, feeStatus: a.feeStatus,
-    rubric: (a.rubric as RubricScore | null) ?? undefined, submittedAt: iso(a.submittedAt), createdAt: iso(a.createdAt)!, updatedAt: iso(a.updatedAt)!,
+    rubric: (a.rubric as RubricScore | null) ?? undefined,
+    chatStatus: (a.chatStatus as Application["chatStatus"]) ?? undefined, chatInitiatedBy: (a.chatInitiatedBy as Application["chatInitiatedBy"]) ?? undefined,
+    chatRequestedAt: iso(a.chatRequestedAt), chatDecidedAt: iso(a.chatDecidedAt),
+    submittedAt: iso(a.submittedAt), createdAt: iso(a.createdAt)!, updatedAt: iso(a.updatedAt)!,
   };
 }
 const mapDoc = (d: any): ApplicationDocument => ({ id: d.id, applicationId: d.applicationId, type: d.type, label: d.label, status: d.status, assetRef: d.assetRef ?? undefined, fileName: d.fileName ?? undefined, uploadedAt: iso(d.uploadedAt) });
@@ -121,7 +127,8 @@ function completenessOf(docs: any[], feePaid: boolean, consent: boolean): number
 
 export const prismaStore: DataStore = {
   async listUnits(filter?: UnitListFilter): Promise<UnitSummary[]> {
-    const where: any = {};
+    // Public discovery excludes owner-submitted listings still awaiting operator review.
+    const where: any = { published: true };
     if (filter?.city) where.property = { city: { contains: filter.city, mode: "insensitive" } };
     if (filter?.bedrooms != null) where.bedrooms = { gte: filter.bedrooms };
     if (filter?.petsAllowed != null) where.petsAllowed = filter.petsAllowed;
@@ -220,12 +227,65 @@ export const prismaStore: DataStore = {
     }));
   },
 
-  async addMessage(reference, body, from = "applicant"): Promise<Message | null> {
-    const app = await prisma.application.findUnique({ where: { reference }, select: { id: true, reference: true } });
-    if (!app || !body.trim()) return null;
+  async addMessage(reference, body, from = "applicant"): Promise<SendMessageResult> {
+    const app = await prisma.application.findUnique({ where: { reference }, select: { id: true, reference: true, chatStatus: true, chatInitiatedBy: true } });
+    if (!app || !body.trim()) return { ok: false, code: "not_found", message: "Application not found" };
+    // Chat invitation gate — the first message on a property is a request the recipient must accept.
+    if (app.chatStatus === "declined") return { ok: false, code: "declined", message: "This chat request was declined." };
+    if (app.chatStatus === "pending") {
+      if (app.chatInitiatedBy === from) return { ok: false, code: "pending_wait", message: "Waiting for the other party to accept your chat request." };
+      return { ok: false, code: "must_accept", message: "Accept the chat request before replying." };
+    }
+    const now = new Date();
+    const isRequest = app.chatStatus == null;
+    if (isRequest) {
+      await prisma.application.update({ where: { id: app.id }, data: { chatStatus: "pending", chatInitiatedBy: from, chatRequestedAt: now, updatedAt: now } });
+    } else {
+      await prisma.application.update({ where: { id: app.id }, data: { updatedAt: now } });
+    }
     const count = await prisma.message.count({ where: { applicationId: app.id } });
-    const m = await prisma.message.create({ data: { id: `msg_${app.reference}_${count + 1}`, applicationId: app.id, from, authorName: from === "operator" ? "Property Manager" : undefined, body: body.trim(), createdAt: new Date() } });
-    return mapMessage(m);
+    const m = await prisma.message.create({ data: { id: `msg_${app.reference}_${count + 1}`, applicationId: app.id, from, authorName: from === "operator" ? "Property Manager" : undefined, body: body.trim(), createdAt: now } });
+    return { ok: true, message: mapMessage(m), chatStatus: isRequest ? "pending" : "accepted", chatInitiatedBy: (app.chatInitiatedBy as "applicant" | "operator" | null) ?? from };
+  },
+
+  async acceptChat(reference, by): Promise<Application | null> {
+    const app = await prisma.application.findUnique({ where: { reference }, select: { id: true, reference: true, chatStatus: true, chatInitiatedBy: true } });
+    if (!app) return null;
+    if (app.chatStatus === "pending" && app.chatInitiatedBy !== by) {
+      const now = new Date();
+      await prisma.application.update({ where: { id: app.id }, data: { chatStatus: "accepted", chatDecidedAt: now, updatedAt: now } });
+      const count = await prisma.message.count({ where: { applicationId: app.id } });
+      await prisma.message.create({ data: { id: `msg_${app.reference}_${count + 1}`, applicationId: app.id, from: "system", body: "Chat request accepted — you can now message each other about this property.", createdAt: now } });
+    }
+    const full = await prisma.application.findUnique({ where: { id: app.id } });
+    return full ? mapApplication(full) : null;
+  },
+
+  async declineChat(reference, by): Promise<Application | null> {
+    const app = await prisma.application.findUnique({ where: { reference }, select: { id: true, chatStatus: true, chatInitiatedBy: true } });
+    if (!app) return null;
+    if (app.chatStatus === "pending" && app.chatInitiatedBy !== by) {
+      const now = new Date();
+      await prisma.application.update({ where: { id: app.id }, data: { chatStatus: "declined", chatDecidedAt: now, updatedAt: now } });
+    }
+    const full = await prisma.application.findUnique({ where: { id: app.id } });
+    return full ? mapApplication(full) : null;
+  },
+
+  async purgeStaleChats(days = 15): Promise<{ threadsPurged: number; messagesDeleted: number }> {
+    const cutoff = new Date(Date.now() - days * 864e5);
+    const apps = await prisma.application.findMany({ select: { id: true } });
+    let threadsPurged = 0, messagesDeleted = 0;
+    for (const app of apps) {
+      const latest = await prisma.message.findFirst({ where: { applicationId: app.id, from: { not: "system" } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+      if (!latest || latest.createdAt >= cutoff) continue;
+      const res = await prisma.message.deleteMany({ where: { applicationId: app.id, from: { not: "system" } } });
+      if (res.count > 0) {
+        messagesDeleted += res.count; threadsPurged++;
+        await prisma.application.update({ where: { id: app.id }, data: { chatStatus: null, chatInitiatedBy: null, chatRequestedAt: null, chatDecidedAt: null } });
+      }
+    }
+    return { threadsPurged, messagesDeleted };
   },
 
   async fulfillDocumentRequest(reference, requestId, asset): Promise<DocumentRequest | null> {
@@ -267,6 +327,7 @@ export const prismaStore: DataStore = {
         status: a.status, submittedAt: iso(a.submittedAt),
         completenessPct: completenessOf(a.documents, a.feeStatus === "paid", !!a.consentGivenAt), score: rubric?.overall,
         incomeToRent: a.screening?.incomeToRent ?? undefined, creditScore: a.screening?.creditScore ?? undefined, flags,
+        chatStatus: (a.chatStatus as AdminQueueRow["chatStatus"]) ?? undefined, chatInitiatedBy: (a.chatInitiatedBy as AdminQueueRow["chatInitiatedBy"]) ?? undefined,
       };
     });
     if (filter?.status) mapped = mapped.filter((r) => r.status === filter.status);
@@ -365,6 +426,7 @@ export const prismaStore: DataStore = {
     if (patch.incomeMultiple != null) data.incomeMultiple = patch.incomeMultiple;
     if (patch.minCreditScore != null) data.minCreditScore = patch.minCreditScore;
     if (patch.petsAllowed != null) data.petsAllowed = patch.petsAllowed;
+    if (patch.published != null) data.published = patch.published;
     if (patch.rent) { data.rentMinor = patch.rent.amountMinor; data.rentCurrency = patch.rent.currency; }
     try {
       const u = await prisma.unit.update({ where: { id }, data });
@@ -380,6 +442,36 @@ export const prismaStore: DataStore = {
       status: "vacant", amenities: [], petsAllowed: input.petsAllowed, incomeMultiple: input.incomeMultiple, availableFrom: new Date(input.availableFrom), description: input.description, photos: [], createdAt: new Date(),
     } });
     return mapUnit(u);
+  },
+
+  async bulkCreateUnits(rows: BulkListingRow[], published: boolean): Promise<BulkUploadResult> {
+    let created = 0, propertiesCreated = 0;
+    const errors: { row: number; message: string }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNo = i + 1;
+      try {
+        const dupe = await prisma.unit.findUnique({ where: { code: row.code }, select: { id: true } });
+        if (dupe) { errors.push({ row: rowNo, message: `${row.code}: a listing with this code already exists.` }); continue; }
+        let property = await prisma.property.findFirst({ where: { name: { equals: row.propertyName, mode: "insensitive" } }, select: { id: true } });
+        if (!property) {
+          if (!row.city || !row.region) { errors.push({ row: rowNo, message: `${row.code}: new property "${row.propertyName}" needs city and region.` }); continue; }
+          property = await prisma.property.create({ data: { id: `prop_bulk_${Date.now()}_${i}`, ownerId: "own_1", name: row.propertyName, addressLine: row.city, city: row.city, region: row.region, postcode: "", createdAt: new Date() }, select: { id: true } });
+          propertiesCreated++;
+        }
+        await prisma.unit.create({ data: {
+          id: `unit_bulk_${row.code.toLowerCase()}_${Date.now()}_${i}`, propertyId: property.id, code: row.code, title: row.title,
+          type: row.type, propertyClass: row.propertyClass, permittedUse: row.permittedUse,
+          bedrooms: row.bedrooms, bathrooms: row.bathrooms, areaSqm: row.areaSqm, rentMinor: row.rentMinor, depositMinor: row.depositMinor,
+          status: "vacant", amenities: row.amenities, petsAllowed: row.petsAllowed, incomeMultiple: row.incomeMultiple,
+          availableFrom: new Date(row.availableFrom), description: row.description, photos: [], views: 0, published, createdAt: new Date(),
+        } });
+        created++;
+      } catch (e) {
+        errors.push({ row: rowNo, message: `${row.code}: could not be created (${e instanceof Error ? e.message : "error"}).` });
+      }
+    }
+    return { created, propertiesCreated, errors };
   },
 
   async getSettings(): Promise<AppSettings> {

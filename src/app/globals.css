@@ -370,7 +370,7 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 .amenity-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .amenity { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink-soft); }
 .amenity .a-ic { color: var(--verdigris); }
-.apply-card { position: sticky; top: 82px; padding: 24px; }
+.apply-card { position: static; padding: 24px; }
 .apply-rent { font-family: var(--ff-display); font-size: 30px; font-weight: 600; }
 .apply-rent small { font-size: 13px; color: var(--grey); font-family: var(--ff-body); }
 .spec-row { display: flex; justify-content: space-between; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--paper-3); }

@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.incomeMultiple != null) patch.incomeMultiple = body.incomeMultiple;
     if (body.minCreditScore != null) patch.minCreditScore = body.minCreditScore;
     if (body.petsAllowed != null) patch.petsAllowed = body.petsAllowed;
+    if (body.published != null) patch.published = body.published;
     if (body.rent) patch.rent = body.rent;
     const store = await getStore();
     const unit = await store.updateUnit(id, patch);

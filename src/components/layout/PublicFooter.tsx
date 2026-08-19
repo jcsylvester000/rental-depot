@@ -23,7 +23,8 @@ export function PublicFooter() {
             <Link href="/account/login">Sign in</Link>
           </div>
           <div>
-            <h5>Operators</h5>
+            <h5>Owners</h5>
+            <Link href="/list-your-property">List your properties</Link>
             <Link href="/admin/dashboard">Operator dashboard</Link>
             <Link href="/admin/queue">Application queue</Link>
           </div>
